@@ -8,7 +8,7 @@ export function DetailPanel({ county }: Props) {
   if (!county) {
     return (
       <div className="detail-panel empty">
-        <p>Select a county from the list or map.</p>
+        <p>Select a county on the map, or turn on <strong>Site evaluate</strong>.</p>
       </div>
     )
   }

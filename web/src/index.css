@@ -76,6 +76,24 @@ input {
   color: var(--accent);
 }
 
+.linkish.active-toggle {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.detail-top h2 {
+  margin: 0;
+}
+
 .banner {
   padding: 0.75rem 1.1rem;
   background: var(--accent-soft);

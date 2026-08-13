@@ -2,24 +2,46 @@ import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
+export interface SiteClickEvent {
+  lat: number
+  lon: number
+  countyFips: string | null
+  countyName: string | null
+  countyRank: number | null
+  countyScore: number | null
+}
+
 interface Props {
   selectedFips: string | null
-  onSelect: (fips: string) => void
+  siteMode: boolean
+  siteMarker: { lat: number; lon: number } | null
+  onSelectCounty: (fips: string) => void
+  onSiteClick: (evt: SiteClickEvent) => void
 }
 
 const GEOJSON_URL = `${import.meta.env.BASE_URL}data/prospects.geojson`
 
-/** Approximate Texas bounds [west, south, east, north] */
 const TEXAS_BOUNDS: [[number, number], [number, number]] = [
   [-106.7, 25.8],
   [-93.5, 36.6],
 ]
 
-export function MapView({ selectedFips, onSelect }: Props) {
+export function MapView({
+  selectedFips,
+  siteMode,
+  siteMarker,
+  onSelectCounty,
+  onSiteClick,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const onSelectRef = useRef(onSelect)
-  onSelectRef.current = onSelect
+  const markerRef = useRef<maplibregl.Marker | null>(null)
+  const siteModeRef = useRef(siteMode)
+  const onSelectCountyRef = useRef(onSelectCounty)
+  const onSiteClickRef = useRef(onSiteClick)
+  siteModeRef.current = siteMode
+  onSelectCountyRef.current = onSelectCounty
+  onSiteClickRef.current = onSiteClick
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -37,11 +59,7 @@ export function MapView({ selectedFips, onSelect }: Props) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
 
-    const resize = () => {
-      map.resize()
-    }
-
-    // Grid layout often mounts with 0×0; resize once layout settles.
+    const resize = () => map.resize()
     resize()
     requestAnimationFrame(resize)
     const ro = new ResizeObserver(() => resize())
@@ -103,21 +121,44 @@ export function MapView({ selectedFips, onSelect }: Props) {
         filter: ['==', ['get', 'countyFips'], ''],
       })
 
-      map.on('click', 'counties-fill', (e) => {
-        const fips = e.features?.[0]?.properties?.countyFips
-        if (typeof fips === 'string') onSelectRef.current(fips)
+      map.on('click', (e) => {
+        const feats = map.queryRenderedFeatures(e.point, { layers: ['counties-fill'] })
+        const props = feats[0]?.properties
+        const fips = typeof props?.countyFips === 'string' ? props.countyFips : null
+        const name = typeof props?.name === 'string' ? props.name : null
+        const rank = typeof props?.rank === 'number' ? props.rank : Number(props?.rank)
+        const score =
+          typeof props?.screeningScore === 'number'
+            ? props.screeningScore
+            : Number(props?.screeningScore)
+
+        if (siteModeRef.current) {
+          onSiteClickRef.current({
+            lat: e.lngLat.lat,
+            lon: e.lngLat.lng,
+            countyFips: fips,
+            countyName: name,
+            countyRank: Number.isFinite(rank) ? rank : null,
+            countyScore: Number.isFinite(score) ? score : null,
+          })
+          return
+        }
+
+        if (fips) onSelectCountyRef.current(fips)
       })
 
       map.on('mouseenter', 'counties-fill', () => {
         map.getCanvas().style.cursor = 'pointer'
       })
       map.on('mouseleave', 'counties-fill', () => {
-        map.getCanvas().style.cursor = ''
+        map.getCanvas().style.cursor = siteModeRef.current ? 'crosshair' : ''
       })
     })
 
     return () => {
       ro.disconnect()
+      markerRef.current?.remove()
+      markerRef.current = null
       map.remove()
       mapRef.current = null
     }
@@ -125,20 +166,47 @@ export function MapView({ selectedFips, onSelect }: Props) {
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !selectedFips) return
+    if (!map) return
+    map.getCanvas().style.cursor = siteMode ? 'crosshair' : ''
+  }, [siteMode])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !selectedFips || siteMode) return
     const apply = () => {
       if (!map.getLayer('counties-selected')) return
       map.setFilter('counties-selected', ['==', ['get', 'countyFips'], selectedFips])
     }
     if (map.isStyleLoaded()) apply()
     else map.once('load', apply)
-  }, [selectedFips])
+  }, [selectedFips, siteMode])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (!siteMarker) {
+      markerRef.current?.remove()
+      markerRef.current = null
+      return
+    }
+
+    if (!markerRef.current) {
+      markerRef.current = new maplibregl.Marker({ color: '#1f4d32' })
+        .setLngLat([siteMarker.lon, siteMarker.lat])
+        .addTo(map)
+    } else {
+      markerRef.current.setLngLat([siteMarker.lon, siteMarker.lat])
+    }
+  }, [siteMarker])
 
   return (
     <div className="map-wrap">
       <div ref={containerRef} className="map-canvas" />
       <div className="map-legend">
-        <div className="legend-title">Screening score</div>
+        <div className="legend-title">
+          {siteMode ? 'Site evaluate — click map' : 'Screening score'}
+        </div>
         <div className="legend-bar" />
         <div className="legend-scale">
           <span>Lower</span>

@@ -8,14 +8,14 @@
 ## Build order
 
 ```text
-M0 Repo/infra          ← DONE
-M1 Data acquisition    ← DONE
-M2 Scoring engine      ← DONE (v0.3 gradient-preferred)
-M3 Static data contract ← DONE
-M4 Map choropleth      ← DONE
-M5 Explorer UI         ← DONE
-M6 Deploy + GitHub Release  ← in progress
+Phase 1 M0–M6          ← DONE (county screening live)
+Phase 2.1 Site dossier ← IN PROGRESS (click-map evaluate)
+Phase 2.2 AOI polygon
+Phase 2.3 Compare sites
+Phase 2.4 Parcels
 ```
+
+See [phase2.md](phase2.md).
 
 ### Thermal roadmap (locked)
 

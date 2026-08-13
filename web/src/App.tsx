@@ -3,6 +3,13 @@ import type { ScreeningCounty } from './types/screening'
 import { DetailPanel } from './components/DetailPanel'
 import { MapView } from './components/MapView'
 import { Methodology } from './components/Methodology'
+import { SiteDossierPanel } from './components/SiteDossierPanel'
+import {
+  buildSiteDossier,
+  type InfraCell,
+  type SiteDossier,
+  type ThermalPoint,
+} from './lib/siteEval'
 
 interface ProspectsPayload {
   meta: {
@@ -21,29 +28,45 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [selectedFips, setSelectedFips] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [siteMode, setSiteMode] = useState(false)
+  const [dossier, setDossier] = useState<SiteDossier | null>(null)
+  const [thermalPoints, setThermalPoints] = useState<ThermalPoint[]>([])
+  const [infraCells, setInfraCells] = useState<InfraCell[]>([])
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL
-    fetch(`${base}data/prospects.json`)
-      .then((r) => {
+    Promise.all([
+      fetch(`${base}data/prospects.json`).then((r) => {
         if (!r.ok) throw new Error(`Failed to load prospects.json (${r.status})`)
         return r.json()
-      })
-      .then((data: ProspectsPayload) => {
-        setPayload(data)
-        if (data.counties[0]) setSelectedFips(data.counties[0].countyFips)
+      }),
+      fetch(`${base}data/thermal_points.json`).then((r) => {
+        if (!r.ok) throw new Error(`Failed to load thermal_points.json (${r.status})`)
+        return r.json()
+      }),
+      fetch(`${base}data/infra_grid.json`).then((r) => {
+        if (!r.ok) throw new Error(`Failed to load infra_grid.json (${r.status})`)
+        return r.json()
+      }),
+    ])
+      .then(([prospects, thermal, infra]) => {
+        setPayload(prospects as ProspectsPayload)
+        setThermalPoints((thermal as { points: ThermalPoint[] }).points ?? [])
+        setInfraCells((infra as { cells: InfraCell[] }).cells ?? [])
+        const first = (prospects as ProspectsPayload).counties[0]
+        if (first) setSelectedFips(first.countyFips)
       })
       .catch((e: Error) => setError(e.message))
   }, [])
 
   const suggestions = useMemo(() => {
-    if (!payload) return []
+    if (!payload || siteMode) return []
     const q = query.trim().toLowerCase()
     if (q.length < 1) return []
     return payload.counties
       .filter((c) => c.name.toLowerCase().includes(q))
       .slice(0, 8)
-  }, [payload, query])
+  }, [payload, query, siteMode])
 
   const selected = useMemo(
     () => payload?.counties.find((c) => c.countyFips === selectedFips) ?? null,
@@ -51,6 +74,8 @@ export default function App() {
   )
 
   const pickCounty = (county: ScreeningCounty) => {
+    setSiteMode(false)
+    setDossier(null)
     setSelectedFips(county.countyFips)
     setQuery(county.name)
   }
@@ -76,35 +101,47 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <h1>Texas Next-Gen County Screening</h1>
+          <h1>Texas Next-Gen Geothermal Intelligence</h1>
           <p className="disclaimer">
             {payload?.meta.disclaimer ??
               'Regional screening index — not a resource map.'}
           </p>
         </div>
         <div className="header-actions">
-          <div className="search">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Find a county…"
-              aria-label="Find a county"
-            />
-            {suggestions.length > 0 && (
-              <ul className="search-results">
-                {suggestions.map((c) => (
-                  <li key={c.countyFips}>
-                    <button type="button" onClick={() => pickCounty(c)}>
-                      <span>
-                        #{c.rank} {c.name}
-                      </span>
-                      <span className="muted">{c.screeningScore.toFixed(1)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <button
+            type="button"
+            className={siteMode ? 'linkish active-toggle' : 'linkish'}
+            onClick={() => {
+              setSiteMode((v) => !v)
+              if (siteMode) setDossier(null)
+            }}
+          >
+            {siteMode ? 'Site mode: ON' : 'Site evaluate'}
+          </button>
+          {!siteMode && (
+            <div className="search">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Find a county…"
+                aria-label="Find a county"
+              />
+              {suggestions.length > 0 && (
+                <ul className="search-results">
+                  {suggestions.map((c) => (
+                    <li key={c.countyFips}>
+                      <button type="button" onClick={() => pickCounty(c)}>
+                        <span>
+                          #{c.rank} {c.name}
+                        </span>
+                        <span className="muted">{c.screeningScore.toFixed(1)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <button type="button" className="linkish" onClick={() => setView('methodology')}>
             Methodology
           </button>
@@ -112,15 +149,42 @@ export default function App() {
       </header>
 
       {error && <div className="banner error">{error}</div>}
-      {!payload && !error && <div className="banner">Loading county scores…</div>}
+      {!payload && !error && <div className="banner">Loading…</div>}
 
       {payload && (
         <main className="explorer">
           <section className="map-pane">
-            <MapView selectedFips={selectedFips} onSelect={setSelectedFips} />
+            <MapView
+              selectedFips={selectedFips}
+              siteMode={siteMode}
+              siteMarker={dossier ? { lat: dossier.lat, lon: dossier.lon } : null}
+              onSelectCounty={(fips) => {
+                setSelectedFips(fips)
+                setDossier(null)
+              }}
+              onSiteClick={(evt) => {
+                setDossier(
+                  buildSiteDossier({
+                    lat: evt.lat,
+                    lon: evt.lon,
+                    countyFips: evt.countyFips,
+                    countyName: evt.countyName,
+                    countyRank: evt.countyRank,
+                    countyScore: evt.countyScore,
+                    thermalPoints,
+                    infraCells,
+                  }),
+                )
+                if (evt.countyFips) setSelectedFips(evt.countyFips)
+              }}
+            />
           </section>
           <aside className="detail-pane">
-            <DetailPanel county={selected} />
+            {siteMode ? (
+              <SiteDossierPanel dossier={dossier} onClear={() => setDossier(null)} />
+            ) : (
+              <DetailPanel county={selected} />
+            )}
           </aside>
         </main>
       )}

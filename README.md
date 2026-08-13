@@ -33,6 +33,7 @@ scoring\.venv\Scripts\python.exe scoring\score_counties.py
 |-----|---------|
 | [docs/red-team-mvp.md](docs/red-team-mvp.md) | Authoritative MVP / milestones |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Locks (incl. gradient as thermal factor) |
+| [docs/phase2.md](docs/phase2.md) | Phase 2 site evaluation plan |
 | [docs/scoring-methodology.md](docs/scoring-methodology.md) | Scoring v0.3 |
 | [docs/data-sources.md](docs/data-sources.md) | Datasets + licenses |
 | [docs/tasks.md](docs/tasks.md) | Build status |
