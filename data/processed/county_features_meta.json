@@ -1,0 +1,11 @@
+{
+  "n_counties": 254,
+  "n_with_thermal": 247,
+  "thermal_metric": "heat_flow_mWm2",
+  "crs_analysis": "EPSG:3083",
+  "outputs": [
+    "C:\\Developer\\Geothermal\\data\\processed\\county_features.csv",
+    "C:\\Developer\\Geothermal\\data\\processed\\county_features.parquet",
+    "C:\\Developer\\Geothermal\\data\\processed\\tx_counties.geojson"
+  ]
+}

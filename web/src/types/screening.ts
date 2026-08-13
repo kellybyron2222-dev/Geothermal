@@ -13,6 +13,7 @@ export interface ScreeningFactor {
   weightedContribution: number
   source: string
   vintage: string
+  metric?: string
 }
 
 export interface ScreeningCounty {

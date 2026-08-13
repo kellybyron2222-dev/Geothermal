@@ -1,0 +1,27 @@
+{
+  "methodologyVersion": "0.3.0",
+  "weights": {
+    "thermal": 0.6,
+    "infra": 0.4
+  },
+  "confidenceThresholds": {
+    "tLow": 8.5,
+    "tHigh": 21.0
+  },
+  "nCounties": 254,
+  "sources": {
+    "thermal": {
+      "name": "IHFC Global Heat Flow Database Release 2024 (gradient preferred; heat flow fallback)",
+      "vintage": "2024"
+    },
+    "infra": {
+      "name": "HIFLD Electric Power Transmission Lines",
+      "vintage": "static extract 2026-08-13"
+    },
+    "counties": {
+      "name": "Census cb_2023_us_county_500k",
+      "vintage": "2023"
+    }
+  },
+  "disclaimer": "Regional screening index for next-gen geothermal focus in Texas. Not a resource map, not interconnection feasibility, not a drill recommendation."
+}

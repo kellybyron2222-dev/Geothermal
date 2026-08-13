@@ -21,9 +21,9 @@ Help a geothermal/energy developer answer: **“Which Texas counties should I fo
 | Objective | Focus / ignore county shortlist with explainable drivers |
 | Primary user | Geothermal / energy project developer |
 | Delivery | **Static** web app + precomputed JSON/GeoJSON |
-| Opportunity factors | **2 only:** thermal proxy (0.60) + transmission proximity (0.40) |
-| Confidence | Well-data density bands (**not** part of Screening Score) |
-| UX | One Explorer (list + map + panel) + Methodology |
+| Opportunity factors | **2 only:** geothermal **gradient** preferred / heat-flow fallback (0.60) + transmission proximity (0.40) |
+| Confidence | Thermal control density bands (**not** part of Screening Score) |
+| UX | Map + detail panel + county search + Methodology |
 | Not included | API, PostGIS, layers, BHT-in-score, parcels, AOI, auth, ML |
 
 ---

@@ -1,10 +1,9 @@
-# Scoring Methodology (Phase 1 / v0.2)
+# Scoring Methodology (Phase 1 / v0.3)
 
-**Authoritative revision after red-team.** Prior 3-factor opportunity model is **retired** for Phase 1.  
-**Full rationale:** [red-team-mvp.md](red-team-mvp.md)  
-**Developer critique:** [scoring-critique.md](scoring-critique.md)
+**Thermal factor:** geothermal **temperature gradient** (preferred), heat flow fallback.  
+**Locks:** [DECISIONS.md](DECISIONS.md) D4 · [scoring-critique.md](scoring-critique.md)
 
-`methodology_version: 0.2.0`
+`methodology_version: 0.3.0`
 
 ---
 
@@ -23,39 +22,28 @@ A **relative Texas county screening index** for early next-gen geothermal priori
 
 ## Spatial unit
 
-**Texas counties only.** One unit. No grid in Phase 1.
+**Texas counties only.**
 
 ---
 
 ## Opportunity factors (2)
 
-### A — Regional thermal proxy (weight **0.60**)
+### A — Thermal potential (weight **0.60**) — gradient preferred
 
 | Item | Detail |
 |------|--------|
-| Why | Without a thermal signal, grid proximity is irrelevant |
-| Dataset | **Exactly one** published heat-flow or gradient product covering Texas |
-| Calculation | Aggregate to county → winsorize (P10–P90) → scale to 0–100 within Texas |
-| Confidence note | Smooth grids hide local highs; label as proxy |
-| **Do not** | Blend BHT into this score in v0.2 |
+| **Primary** | Geothermal gradient (°C/km) from IHFC `T_grad_mean` |
+| Why gradient | Matches next-gen intuition: temperature rise with depth |
+| Calculation | County mean of valid gradient points → winsorize P10–P90 → scale 0–100 in Texas |
+| Valid range gate | Drop absurd point values outside ~5–150 °C/km before aggregate |
+| **Fallback** | If a county has **no** gradient control, use county mean **heat flow** (`q`, mW/m²) with the same winsorize/scale path |
+| UI label | “Geothermal gradient” or “Heat-flow fallback” depending on `thermal_metric` |
+| **Do not** | DIY BHT→gradient corrections |
 
 ### B — Transmission proximity (weight **0.40**)
 
-| Item | Detail |
-|------|--------|
-| Why | Power-oriented next-gen care about grid access context |
-| Dataset | **One** redistributable transmission dataset (ERCOT if allowed; else HIFLD/public) |
-| Calculation | One metric only (e.g. distance from county centroid to nearest line, **or** line-km per area) → scale 0–100 |
-| Label | “Grid proximity proxy — **not** interconnection feasibility” |
-| **Do not** | Require substations or power plants for v0.2 |
-
-### Removed from opportunity score
-
-| Former factor | Disposition |
-|---------------|-------------|
-| Well density @ 0.25 | **Removed** — scientifically misleading as “attractiveness”; wells → confidence only |
-| BHT | **Excluded** from opportunity until a credible correction path exists |
-| Faults / springs / plants | Excluded |
+Unchanged: HIFLD distance to nearest transmission line (km); nearer is better.  
+Label: grid proximity proxy — **not** interconnection feasibility.
 
 ---
 
@@ -63,46 +51,35 @@ A **relative Texas county screening index** for early next-gen geothermal priori
 
 ```text
 ScreeningScore = 0.60 * S_thermal + 0.40 * S_infra
-
-Rank = dense_rank(ScreeningScore DESC)
-Tie-break: higher S_thermal, then higher Confidence band
 ```
+
+`S_thermal` is always 0–100 relative Texas scale, but the **raw unit** is either °C/km (preferred) or mW/m² (fallback).
 
 ---
 
 ## Confidence (separate)
 
+From **thermal control count** used for the active metric (gradient_n if gradient, else heatflow_n):
+
 ```text
-High   | well_count >= T_high
-Medium | T_low <= well_count < T_high
-Low    | well_count < T_low
-Unknown| wells unavailable
+High   | count >= T_high
+Medium | T_low <= count < T_high
+Low    | 0 < count < T_low
+Unknown| count == 0
 ```
-
-Thresholds `T_low` / `T_high` set once from Texas distribution and documented in release notes.
-
-**Never multiply ScreeningScore by confidence for primary rank.**
 
 ---
 
-## Explainability
+## Build plan note
 
-Per county emit:
-
-- rank, ScreeningScore, confidence  
-- each factor: raw value, unit, score_0_100, weight, contribution  
-- 2–3 rule-based drivers  
-- limitations (always include infra disclaimer; include low-confidence warning when applicable)  
-- source name + vintage per factor  
+| Step | Status |
+|------|--------|
+| v0.2 heat-flow-only thermal | Shipped (interim) |
+| v0.3 gradient-preferred thermal | **Active** |
+| Later | Optional dual display (show both gradient and heat flow always) |
 
 ---
 
 ## Calibration
 
-Before release: manually review top 15 and bottom 15 counties for georeferencing disasters and obvious nonsense. Adjust data bugs—not weights—first. Freeze weights for `v0.2.0`.
-
----
-
-## Developer critique
-
-See [scoring-critique.md](scoring-critique.md) for unit, factor sufficiency, strongest datasets, false-confidence traps, and map representation guidance.
+Review top/bottom 15 after gradient switch. Freeze weights; change metric with methodology version bump only.

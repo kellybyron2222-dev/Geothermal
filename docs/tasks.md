@@ -8,14 +8,23 @@
 ## Build order
 
 ```text
-M0 Repo/infra          ← DONE (Vite/React/TS/MapLibre scaffold)
-M1 Data acquisition (critical path — time-box)
-M2 Scoring engine v0.2
-M3 Static data contract (not FastAPI)
-M4 Map choropleth
-M5 Explorer UI + methodology
-M6 Deploy + GitHub Release
+M0 Repo/infra          ← DONE
+M1 Data acquisition    ← DONE
+M2 Scoring engine      ← DONE (v0.3 gradient-preferred)
+M3 Static data contract ← DONE
+M4 Map choropleth      ← DONE
+M5 Explorer UI         ← DONE
+M6 Deploy + GitHub Release  ← in progress
 ```
+
+### Thermal roadmap (locked)
+
+| Item | Plan |
+|------|------|
+| Geothermal gradient as primary thermal factor | **v0.3 (now)** |
+| Heat flow as fallback when gradient missing | **v0.3 (now)** |
+| DIY BHT→gradient | Not in Phase 1 |
+| Always show both gradient + heat flow in panel | Near-term polish |
 
 Do not start M4–M5 until M2 outputs exist.
 

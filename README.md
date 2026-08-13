@@ -7,37 +7,10 @@ Decision-support for geothermal development — **not a GIS viewer**.
 ## Beachhead
 
 - **Geography:** Texas / ERCOT  
-- **Phase 1:** Next-gen **county screening** (thermal proxy + transmission proximity)  
-- **Delivery:** Static web MVP · ~30–45 days · solo founder  
+- **Phase 1:** Next-gen **county screening** — geothermal **gradient** preferred (heat-flow fallback) + transmission proximity  
+- **Live app (after Pages deploy):** https://kellybyron2222-dev.github.io/Geothermal/  
 
-## Start here
-
-| Doc | Purpose |
-|-----|---------|
-| **[docs/red-team-mvp.md](docs/red-team-mvp.md)** | **Authoritative** red-team review, true MVP, shippable Phase 1, milestones |
-| [docs/scoring-critique.md](docs/scoring-critique.md) | Geothermal-developer critique of scoring + map representation |
-| [docs/MVP.md](docs/MVP.md) | Short MVP lock |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Play type, JTBD, scope freeze |
-| [docs/scoring-methodology.md](docs/scoring-methodology.md) | Scoring v0.2 |
-| [docs/architecture-draft.md](docs/architecture-draft.md) | Static stack |
-| [docs/prd.md](docs/prd.md) | Requirements |
-| [docs/roadmap.md](docs/roadmap.md) | Phases 1–5 |
-| [docs/tasks.md](docs/tasks.md) | Milestone pointer |
-| [docs/vision.md](docs/vision.md) | Vision / risks |
-
-## Phase 1 in one line
-
-Rank Texas counties for next-gen geothermal screening with two explainable factors—and show why—without building a GIS platform.
-
-## Repo structure (Milestone 0)
-
-```text
-docs/           Product + methodology
-web/            Vite + React + TypeScript + MapLibre (scaffold)
-scoring/        Python ETL (later milestones)
-data/raw/       Gitignored downloads
-data/processed/ Derived county features / scores
-```
+## Try it locally
 
 ```bash
 cd web
@@ -45,4 +18,31 @@ npm install
 npm run dev
 ```
 
-Developer critique of scoring: [docs/scoring-critique.md](docs/scoring-critique.md)
+Open http://127.0.0.1:5173/
+
+Rebuild scores:
+
+```bash
+scoring\.venv\Scripts\python.exe scoring\build_county_features.py
+scoring\.venv\Scripts\python.exe scoring\score_counties.py
+```
+
+## Docs
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/red-team-mvp.md](docs/red-team-mvp.md) | Authoritative MVP / milestones |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Locks (incl. gradient as thermal factor) |
+| [docs/scoring-methodology.md](docs/scoring-methodology.md) | Scoring v0.3 |
+| [docs/data-sources.md](docs/data-sources.md) | Datasets + licenses |
+| [docs/tasks.md](docs/tasks.md) | Build status |
+
+## Repo layout
+
+```text
+docs/           Product + methodology
+web/            Vite + React + TypeScript + MapLibre Explorer
+scoring/        Python download / features / score
+data/raw/       Gitignored downloads
+data/processed/ Derived features (optional commit)
+```

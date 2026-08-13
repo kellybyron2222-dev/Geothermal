@@ -1,22 +1,129 @@
-/**
- * Milestone 0 scaffold only — Explorer UI ships in later milestones.
- * Stack: Vite + React + TypeScript + MapLibre (see docs/architecture-draft.md)
- */
+import { useEffect, useMemo, useState } from 'react'
+import type { ScreeningCounty } from './types/screening'
+import { DetailPanel } from './components/DetailPanel'
+import { MapView } from './components/MapView'
+import { Methodology } from './components/Methodology'
+
+interface ProspectsPayload {
+  meta: {
+    methodologyVersion: string
+    disclaimer: string
+    weights: { thermal: number; infra: number }
+  }
+  counties: ScreeningCounty[]
+}
+
+type View = 'explorer' | 'methodology'
+
 export default function App() {
+  const [view, setView] = useState<View>('explorer')
+  const [payload, setPayload] = useState<ProspectsPayload | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedFips, setSelectedFips] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL
+    fetch(`${base}data/prospects.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load prospects.json (${r.status})`)
+        return r.json()
+      })
+      .then((data: ProspectsPayload) => {
+        setPayload(data)
+        if (data.counties[0]) setSelectedFips(data.counties[0].countyFips)
+      })
+      .catch((e: Error) => setError(e.message))
+  }, [])
+
+  const suggestions = useMemo(() => {
+    if (!payload) return []
+    const q = query.trim().toLowerCase()
+    if (q.length < 1) return []
+    return payload.counties
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [payload, query])
+
+  const selected = useMemo(
+    () => payload?.counties.find((c) => c.countyFips === selectedFips) ?? null,
+    [payload, selectedFips],
+  )
+
+  const pickCounty = (county: ScreeningCounty) => {
+    setSelectedFips(county.countyFips)
+    setQuery(county.name)
+  }
+
+  if (view === 'methodology') {
+    return (
+      <div className="app-shell">
+        <header className="app-header">
+          <div>
+            <h1>Texas Next-Gen County Screening</h1>
+            <p className="disclaimer">Methodology</p>
+          </div>
+          <button type="button" className="linkish" onClick={() => setView('explorer')}>
+            ← Back to Explorer
+          </button>
+        </header>
+        <Methodology meta={payload?.meta ?? null} />
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Texas Next-Gen County Screening</h1>
-        <p className="disclaimer">
-          Milestone 0 scaffold — regional screening index (not a resource map).
-        </p>
+        <div>
+          <h1>Texas Next-Gen County Screening</h1>
+          <p className="disclaimer">
+            {payload?.meta.disclaimer ??
+              'Regional screening index — not a resource map.'}
+          </p>
+        </div>
+        <div className="header-actions">
+          <div className="search">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find a county…"
+              aria-label="Find a county"
+            />
+            {suggestions.length > 0 && (
+              <ul className="search-results">
+                {suggestions.map((c) => (
+                  <li key={c.countyFips}>
+                    <button type="button" onClick={() => pickCounty(c)}>
+                      <span>
+                        #{c.rank} {c.name}
+                      </span>
+                      <span className="muted">{c.screeningScore.toFixed(1)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <button type="button" className="linkish" onClick={() => setView('methodology')}>
+            Methodology
+          </button>
+        </div>
       </header>
-      <main className="app-main">
-        <p>
-          Project structure ready. Features land in Milestones 4–5 after scoring
-          data exists.
-        </p>
-      </main>
+
+      {error && <div className="banner error">{error}</div>}
+      {!payload && !error && <div className="banner">Loading county scores…</div>}
+
+      {payload && (
+        <main className="explorer">
+          <section className="map-pane">
+            <MapView selectedFips={selectedFips} onSelect={setSelectedFips} />
+          </section>
+          <aside className="detail-pane">
+            <DetailPanel county={selected} />
+          </aside>
+        </main>
+      )}
     </div>
   )
 }

@@ -64,3 +64,19 @@ Ship a **ranked, factor-explained focus list** as the core deliverable. Map is s
 - No interactive dataset explorer / layer toggles
 
 When documents conflict, **red-team-mvp.md wins**.
+
+---
+
+## D4 — Thermal factor prefers geothermal gradient (2026-08-13)
+
+**Locked:** The primary thermal opportunity factor should be **geothermal temperature gradient** (°C/km or K/km), not heat flow alone.
+
+| Item | Decision |
+|------|----------|
+| Primary metric | IHFC `T_grad_mean` (prefer `T_grad_mean_cor` when present) |
+| Why | Closer to next-gen developer intuition (temperature rise with depth) |
+| Heat flow (`q`) | Retain as secondary/display and fallback when gradient is missing |
+| DIY BHT→gradient | Still forbidden in Phase 1 |
+| Methodology bump | `0.3.0` when gradient is live in ScreeningScore |
+
+Phase 1.5 / immediate scoring upgrade: switch ScreeningScore thermal leg to gradient; keep weights 0.60 / 0.40.
