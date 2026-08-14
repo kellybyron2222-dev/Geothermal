@@ -97,11 +97,13 @@ const SCORE_COLOR: maplibregl.ExpressionSpecification = [
   ...SCORE_COLOR_STOPS.flatMap((s) => [s.value, s.color]),
 ]
 
-/** Gradient full paint; heat-flow muted; missing thermal nearly blank. Used in score fill mode. */
+/** Full paint for live thermal modes; heat-flow muted; missing nearly blank. */
 const METRIC_OPACITY: maplibregl.ExpressionSpecification = [
   'match',
   ['get', 'thermalMetric'],
   'gradient_C_per_km',
+  0.88,
+  'tdepth_C_km4',
   0.88,
   'heat_flow_mWm2',
   0.42,
@@ -142,6 +144,8 @@ const SCORE_OUTLINE_COLOR: maplibregl.ExpressionSpecification = [
   ['get', 'thermalMetric'],
   'gradient_C_per_km',
   '#1f4d32',
+  'tdepth_C_km4',
+  '#1f4d32',
   'heat_flow_mWm2',
   '#9a7b3c',
   '#889088',
@@ -151,6 +155,8 @@ const SCORE_OUTLINE_WIDTH: maplibregl.ExpressionSpecification = [
   'match',
   ['get', 'thermalMetric'],
   'gradient_C_per_km',
+  0.7,
+  'tdepth_C_km4',
   0.7,
   'heat_flow_mWm2',
   0.45,
@@ -822,7 +828,8 @@ export function MapView({
               ))}
             </div>
             <div className="legend-note">
-              Full opacity = gradient · muted = heat-flow fallback · pale = no thermal
+              Full opacity = T@depth / gradient · muted = heat-flow fallback · pale =
+              no thermal
             </div>
           </>
         )}
