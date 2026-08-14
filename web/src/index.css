@@ -83,6 +83,56 @@ input {
   font-weight: 650;
 }
 
+.metric-banner {
+  margin: 0.75rem 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.metric-banner.gradient {
+  background: var(--accent-soft);
+  border: 1px solid #9fbfab;
+}
+
+.metric-banner.fallback {
+  background: #f8efe0;
+  border: 1px solid #e0c48a;
+}
+
+.verb-banner {
+  margin: 0.75rem 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.verb-keep-looking {
+  background: var(--accent-soft);
+  color: #1f4d32;
+}
+
+.verb-weak-evidence,
+.verb-insufficient-control {
+  background: #f8e4e0;
+  color: #6b2a1f;
+}
+
+.verb-deprioritize {
+  background: #f4f1ea;
+  color: #5c6560;
+}
+
+.warn {
+  color: #6b2a1f;
+  font-weight: 600;
+}
+
+.weakened {
+  opacity: 0.55;
+}
+
 .detail-top {
   display: flex;
   justify-content: space-between;

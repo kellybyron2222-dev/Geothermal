@@ -1,0 +1,65 @@
+---
+description: Parallel build + red/blue deliberation + judgment + persona review loop
+alwaysApply: true
+---
+
+# Build Framework (mandatory)
+
+When building or iterating on this product, follow this loop. Do not skip layers.
+
+## 1) Parallel execution
+
+- Prefer **multiple agents / tools in parallel** for exploration, implementation, review, and research.
+- Split independent workstreams (data, scoring, UI, docs, deploy) instead of serializing.
+- Use Task subagents when scope is broad; use direct tools for narrow edits.
+
+## 2) Red team / blue team deliberation (after each meaningful feature)
+
+After shipping a feature slice, run an explicit deliberation:
+
+- **Blue team:** what works, why it creates user/decision value, keep list
+- **Red team:** what fails, misleads, overclaims, is slow, or is low value / high complexity
+- Output concrete findings with severity and recommended fix/enhance/defer
+
+## 3) Judgment layer (director agent role)
+
+A dedicated judgment pass must decide:
+
+- **Build/fix now**
+- **Enhance soon** (still this phase)
+- **Defer to later phase**
+- **Reject / do not build**
+
+Judgment is authoritative for prioritization. Challenge scope aggressively. Preserve MVP philosophy: actionable geothermal intelligence, not GIS sprawl.
+
+## 4) Iterate on 2 + 3
+
+Implement the **now** items from judgment. Re-run red/blue + judgment until the director says the phase slice is done enough.
+
+## 5) Persona simulation (100 reviewers)
+
+Simulate ~100 reviewers across personas (weight toward primary buyers):
+
+- Geothermal developers
+- Energy project developers
+- Infrastructure / land investors
+- Researchers / students (secondary)
+- Skeptical domain experts / geothermal scientists
+- Policymakers (light weight)
+
+Collect clustered feedback (praise, confusion, distrust, missing must-haves). Feed clusters back into steps **2 and 3**.
+
+## 6) Stop condition
+
+Stop when the judgment layer declares the **current phase/scope** complete — not when ideas remain. Deferrals are success, not failure.
+
+## Artifacts
+
+Write cycle outputs under `docs/reviews/` (red-blue, judgment, persona synthesis) so decisions persist.
+
+## Product constraints (never violate)
+
+- Maps/datasets are not the product; explainable decisions are
+- Texas / next-gen beachhead until judgment expands scope
+- Prefer explainable heuristics over black-box ML
+- Solo-dev achievability matters; cut features that don't change decisions

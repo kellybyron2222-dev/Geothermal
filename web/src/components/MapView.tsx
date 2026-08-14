@@ -205,7 +205,7 @@ export function MapView({
       <div ref={containerRef} className="map-canvas" />
       <div className="map-legend">
         <div className="legend-title">
-          {siteMode ? 'Site evaluate — click map' : 'Screening score'}
+          {siteMode ? 'Point check — click map' : 'Screening score'}
         </div>
         <div className="legend-bar" />
         <div className="legend-scale">

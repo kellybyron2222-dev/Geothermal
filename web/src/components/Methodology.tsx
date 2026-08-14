@@ -34,6 +34,17 @@ export function Methodology({ meta }: { meta: Meta | null }) {
         </li>
       </ul>
 
+      <h3>Point check (Phase 2.1)</h3>
+      <ul>
+        <li>Click mode gathers evidence at a point — <strong>not</strong> a site score.</li>
+        <li>Local thermal: unweighted IHFC points within 40 km (gradient and/or heat flow).</li>
+        <li>Site confidence from point count + nearest distance.</li>
+        <li>
+          Transmission: nearest cell on a ~0.15° (~15 km) precomputed HIFLD proximity grid.
+        </li>
+        <li>County rank on the panel is regional context only.</li>
+      </ul>
+
       <h3>What this is not</h3>
       <ul>
         <li>Not a geothermal resource assessment</li>

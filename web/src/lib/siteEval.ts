@@ -11,6 +11,8 @@ export interface InfraCell {
   distKm: number
 }
 
+export type SiteConfidence = 'High' | 'Medium' | 'Low' | 'None'
+
 export interface SiteDossier {
   lat: number
   lon: number
@@ -18,10 +20,15 @@ export interface SiteDossier {
   countyName: string | null
   countyRank: number | null
   countyScore: number | null
+  countyThermalMetric: string | null
   transmissionDistKm: number | null
   nearbyCount: number
+  nearestKm: number | null
+  siteConfidence: SiteConfidence
   localGradientMean: number | null
   localHeatflowMean: number | null
+  gradientPointCount: number
+  heatflowPointCount: number
   nearestPoints: Array<{
     lat: number
     lon: number
@@ -30,6 +37,7 @@ export interface SiteDossier {
     grad: number | null
   }>
   limitations: string[]
+  evidenceVerb: 'Keep looking' | 'Weak evidence' | 'Deprioritize' | 'Insufficient control'
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -61,6 +69,23 @@ export function lookupInfraDistKm(
   return best.distKm
 }
 
+function siteConfidence(n: number, nearestKm: number | null): SiteConfidence {
+  if (n <= 0) return 'None'
+  if (n >= 8 && nearestKm != null && nearestKm <= 15) return 'High'
+  if (n >= 3 && nearestKm != null && nearestKm <= 25) return 'Medium'
+  return 'Low'
+}
+
+function evidenceVerb(
+  conf: SiteConfidence,
+  nearestKm: number | null,
+): SiteDossier['evidenceVerb'] {
+  if (conf === 'None') return 'Insufficient control'
+  if (conf === 'Low' || (nearestKm != null && nearestKm > 30)) return 'Weak evidence'
+  if (conf === 'High') return 'Keep looking'
+  return 'Keep looking'
+}
+
 export function buildSiteDossier(args: {
   lat: number
   lon: number
@@ -68,6 +93,7 @@ export function buildSiteDossier(args: {
   countyName: string | null
   countyRank: number | null
   countyScore: number | null
+  countyThermalMetric: string | null
   thermalPoints: ThermalPoint[]
   infraCells: InfraCell[]
   radiusKm?: number
@@ -83,19 +109,38 @@ export function buildSiteDossier(args: {
 
   const withGrad = nearby.filter((p) => p.grad != null)
   const withQ = nearby.filter((p) => p.q != null)
+  const nearestKm = nearby[0]?.distKm ?? null
+  const conf = siteConfidence(nearby.length, nearestKm)
 
   const mean = (vals: number[]) =>
     vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
 
-  const limitations = [
-    'Site dossier is indicative screening support — not a resource or drill recommendation.',
-    'Transmission distance is interpolated from a precomputed HIFLD proximity grid — not interconnection feasibility.',
+  const limitations: string[] = [
+    'Point evidence check only — not a site resource assessment or drill recommendation.',
+    'Transmission distance is nearest cell on a ~0.15° (~15 km) HIFLD proximity grid — not survey-grade and not interconnection feasibility.',
+    `Thermal “local” means use an unweighted disk of radius ${radiusKm} km — regional smear, not pad-level geology.`,
   ]
+
   if (nearby.length === 0) {
-    limitations.push(`No IHFC thermal control points within ${radiusKm} km.`)
+    limitations.unshift('Insufficient local thermal control — no IHFC points in radius.')
+  } else if (nearby.length === 1) {
+    limitations.unshift('Only one IHFC control point in radius — treat means as indicative only.')
   }
+
   if (withGrad.length === 0 && withQ.length > 0) {
-    limitations.push('Local geothermal gradient unavailable; heat-flow points shown instead.')
+    limitations.push('No local geothermal gradient points; heat-flow observations only.')
+  }
+
+  if (args.countyThermalMetric === 'heat_flow_mWm2') {
+    limitations.push(
+      'Containing county screening used heat-flow fallback (gradient unavailable at county scale).',
+    )
+  }
+
+  if (args.countyRank != null) {
+    limitations.push(
+      'County screening rank/score is regional context — not a score for this click point.',
+    )
   }
 
   return {
@@ -105,10 +150,15 @@ export function buildSiteDossier(args: {
     countyName: args.countyName,
     countyRank: args.countyRank,
     countyScore: args.countyScore,
+    countyThermalMetric: args.countyThermalMetric,
     transmissionDistKm: lookupInfraDistKm(args.lat, args.lon, args.infraCells),
     nearbyCount: nearby.length,
+    nearestKm: nearestKm == null ? null : Math.round(nearestKm * 10) / 10,
+    siteConfidence: conf,
     localGradientMean: mean(withGrad.map((p) => p.grad as number)),
     localHeatflowMean: mean(withQ.map((p) => p.q as number)),
+    gradientPointCount: withGrad.length,
+    heatflowPointCount: withQ.length,
     nearestPoints: nearby.slice(0, 5).map((p) => ({
       lat: p.lat,
       lon: p.lon,
@@ -117,5 +167,6 @@ export function buildSiteDossier(args: {
       grad: p.grad,
     })),
     limitations,
+    evidenceVerb: evidenceVerb(conf, nearestKm),
   }
 }

@@ -8,10 +8,16 @@ export function DetailPanel({ county }: Props) {
   if (!county) {
     return (
       <div className="detail-panel empty">
-        <p>Select a county on the map, or turn on <strong>Site evaluate</strong>.</p>
+        <p>
+          Select a county on the map, or use <strong>Point check</strong> for click-level
+          evidence.
+        </p>
       </div>
     )
   }
+
+  const thermal = county.factors.find((f) => f.id === 'thermal')
+  const isFallback = thermal?.metric === 'heat_flow_mWm2'
 
   return (
     <div className="detail-panel">
@@ -30,6 +36,16 @@ export function DetailPanel({ county }: Props) {
           </div>
         </div>
       </div>
+
+      {isFallback ? (
+        <div className="metric-banner fallback">
+          County thermal metric: <strong>heat-flow fallback</strong> (gradient unavailable)
+        </div>
+      ) : (
+        <div className="metric-banner gradient">
+          County thermal metric: <strong>geothermal gradient</strong>
+        </div>
+      )}
 
       <h3>Why this rank</h3>
       <ul className="drivers">

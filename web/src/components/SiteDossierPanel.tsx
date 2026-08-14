@@ -10,17 +10,22 @@ export function SiteDossierPanel({ dossier, onClear }: Props) {
     return (
       <div className="detail-panel empty">
         <p>
-          <strong>Site evaluate</strong> mode is on. Click the map to build a site
-          dossier.
+          <strong>Point check</strong> mode is on. Click the map for local thermal
+          control and grid proximity evidence — not a site score.
         </p>
       </div>
     )
   }
 
+  const weak =
+    dossier.siteConfidence === 'None' ||
+    dossier.siteConfidence === 'Low' ||
+    dossier.nearbyCount <= 1
+
   return (
     <div className="detail-panel">
       <div className="detail-top">
-        <h2>Site dossier</h2>
+        <h2>Point evidence check</h2>
         <button type="button" className="linkish" onClick={onClear}>
           Clear
         </button>
@@ -29,45 +34,61 @@ export function SiteDossierPanel({ dossier, onClear }: Props) {
         {dossier.lat.toFixed(4)}°N, {Math.abs(dossier.lon).toFixed(4)}°W
       </p>
 
-      <h3>County context</h3>
-      {dossier.countyName ? (
-        <p>
-          {dossier.countyName} County
-          {dossier.countyRank != null && <> · rank #{dossier.countyRank}</>}
-          {dossier.countyScore != null && (
-            <> · screening {dossier.countyScore.toFixed(1)}</>
-          )}
-        </p>
-      ) : (
-        <p className="muted">Outside scored Texas counties (or click missed a polygon).</p>
-      )}
+      <div className={`verb-banner verb-${dossier.evidenceVerb.replace(/\s+/g, '-').toLowerCase()}`}>
+        {dossier.evidenceVerb}
+      </div>
 
-      <h3>Local thermal (≤ 40 km)</h3>
+      <h3>Local control quality</h3>
       <div className="score-row">
         <div>
-          <div className="label">Gradient mean</div>
+          <div className="label">Points ≤ 40 km</div>
+          <div className="big">{dossier.nearbyCount}</div>
+        </div>
+        <div>
+          <div className="label">Nearest control</div>
+          <div className="big">
+            {dossier.nearestKm == null ? '—' : `${dossier.nearestKm} km`}
+          </div>
+        </div>
+      </div>
+      <p>
+        Site confidence:{' '}
+        <strong className={`conf conf-${dossier.siteConfidence.toLowerCase()}`}>
+          {dossier.siteConfidence}
+        </strong>
+      </p>
+      {dossier.siteConfidence === 'None' && (
+        <p className="warn">
+          Insufficient local thermal control — do not treat this click as thermally
+          supported.
+        </p>
+      )}
+
+      <h3>Local thermal means {weak && <span className="muted">(de-emphasized — weak control)</span>}</h3>
+      <div className={`score-row ${weak ? 'weakened' : ''}`}>
+        <div>
+          <div className="label">Gradient mean (n={dossier.gradientPointCount})</div>
           <div className="big">
             {dossier.localGradientMean == null
               ? '—'
               : `${dossier.localGradientMean.toFixed(1)}`}
           </div>
-          <div className="muted tiny">°C/km</div>
+          <div className="muted tiny">°C/km · unweighted ≤40 km disk</div>
         </div>
         <div>
-          <div className="label">Heat-flow mean</div>
+          <div className="label">Heat-flow mean (n={dossier.heatflowPointCount})</div>
           <div className="big">
             {dossier.localHeatflowMean == null
               ? '—'
               : `${dossier.localHeatflowMean.toFixed(1)}`}
           </div>
-          <div className="muted tiny">mW/m²</div>
+          <div className="muted tiny">mW/m² · unweighted ≤40 km disk</div>
         </div>
       </div>
-      <p className="muted tiny">{dossier.nearbyCount} IHFC control points in radius</p>
 
       {dossier.nearestPoints.length > 0 && (
         <>
-          <h3>Nearest points</h3>
+          <h3>Nearest IHFC points</h3>
           <ul className="drivers">
             {dossier.nearestPoints.map((p) => (
               <li key={`${p.lat}-${p.lon}-${p.distKm}`}>
@@ -84,9 +105,32 @@ export function SiteDossierPanel({ dossier, onClear }: Props) {
       <p>
         {dossier.transmissionDistKm == null
           ? '—'
-          : `${dossier.transmissionDistKm.toFixed(1)} km to nearest mapped line`}
+          : `~${Math.round(dossier.transmissionDistKm)} km to nearest mapped line`}
       </p>
-      <p className="muted tiny">Grid proximity proxy — not interconnection feasibility</p>
+      <p className="muted tiny">
+        Coarse proxy from ~0.15° (~15 km) grid — not survey distance, not interconnection
+        feasibility
+      </p>
+
+      <h3>County screening context</h3>
+      <p className="muted tiny">Not a score for this click point</p>
+      {dossier.countyName ? (
+        <p>
+          {dossier.countyName} County
+          {dossier.countyRank != null && <> · rank #{dossier.countyRank}</>}
+          {dossier.countyScore != null && (
+            <> · screening {dossier.countyScore.toFixed(1)}</>
+          )}
+          {dossier.countyThermalMetric === 'gradient_C_per_km' && (
+            <> · county thermal: <strong>gradient</strong></>
+          )}
+          {dossier.countyThermalMetric === 'heat_flow_mWm2' && (
+            <> · county thermal: <strong>heat-flow fallback</strong></>
+          )}
+        </p>
+      ) : (
+        <p className="muted">No containing scored county for this click.</p>
+      )}
 
       <h3>Limitations</h3>
       <ul className="limitations">

@@ -18,18 +18,18 @@ Move from “which counties?” to **“what about this site?”** — still exp
 | **2.3** | Side-by-side compare 2–3 sites | No |
 | **2.4** | Parcel / land context (narrow public sources) | Yes |
 
-## Phase 2.1 — Site dossier (this milestone)
+## Phase 2.1 — Point evidence check
 
 ### User flow
 
-1. Toggle **Site evaluate** mode  
+1. Toggle **Point check** mode  
 2. Click anywhere in Texas on the map  
-3. Right panel shows a **site dossier**:
-   - Lat/lon  
-   - Containing county + county screening rank/score  
-   - Local thermal: nearest IHFC points (gradient preferred, heat flow shown)  
-   - Distance to nearest transmission (site-level, HIFLD-derived)  
-   - Confidence / limitations  
+3. Right panel shows **point evidence** (not a site score):
+   - Control quality (`n`, nearest km, site confidence) + evidence verb  
+   - Local thermal means (de-emphasized when weak)  
+   - ~km transmission from coarse HIFLD grid (~0.15°)  
+   - County screening **context only**  
+   - Situational limitations  
 
 ### Data
 

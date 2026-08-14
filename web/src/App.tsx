@@ -26,6 +26,7 @@ export default function App() {
   const [view, setView] = useState<View>('explorer')
   const [payload, setPayload] = useState<ProspectsPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [siteError, setSiteError] = useState<string | null>(null)
   const [selectedFips, setSelectedFips] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [siteMode, setSiteMode] = useState(false)
@@ -35,28 +36,32 @@ export default function App() {
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL
-    Promise.all([
-      fetch(`${base}data/prospects.json`).then((r) => {
+    fetch(`${base}data/prospects.json`)
+      .then((r) => {
         if (!r.ok) throw new Error(`Failed to load prospects.json (${r.status})`)
         return r.json()
-      }),
+      })
+      .then((prospects: ProspectsPayload) => {
+        setPayload(prospects)
+        if (prospects.counties[0]) setSelectedFips(prospects.counties[0].countyFips)
+      })
+      .catch((e: Error) => setError(e.message))
+
+    Promise.all([
       fetch(`${base}data/thermal_points.json`).then((r) => {
-        if (!r.ok) throw new Error(`Failed to load thermal_points.json (${r.status})`)
+        if (!r.ok) throw new Error(`thermal_points.json (${r.status})`)
         return r.json()
       }),
       fetch(`${base}data/infra_grid.json`).then((r) => {
-        if (!r.ok) throw new Error(`Failed to load infra_grid.json (${r.status})`)
+        if (!r.ok) throw new Error(`infra_grid.json (${r.status})`)
         return r.json()
       }),
     ])
-      .then(([prospects, thermal, infra]) => {
-        setPayload(prospects as ProspectsPayload)
+      .then(([thermal, infra]) => {
         setThermalPoints((thermal as { points: ThermalPoint[] }).points ?? [])
         setInfraCells((infra as { cells: InfraCell[] }).cells ?? [])
-        const first = (prospects as ProspectsPayload).counties[0]
-        if (first) setSelectedFips(first.countyFips)
       })
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => setSiteError(`Point check data unavailable: ${e.message}`))
   }, [])
 
   const suggestions = useMemo(() => {
@@ -101,7 +106,7 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <h1>Texas Next-Gen Geothermal Intelligence</h1>
+          <h1>Texas Next-Gen Geothermal Screening</h1>
           <p className="disclaimer">
             {payload?.meta.disclaimer ??
               'Regional screening index — not a resource map.'}
@@ -111,12 +116,14 @@ export default function App() {
           <button
             type="button"
             className={siteMode ? 'linkish active-toggle' : 'linkish'}
+            disabled={Boolean(siteError)}
+            title={siteError ?? 'Point evidence check'}
             onClick={() => {
               setSiteMode((v) => !v)
               if (siteMode) setDossier(null)
             }}
           >
-            {siteMode ? 'Site mode: ON' : 'Site evaluate'}
+            {siteMode ? 'Point check: ON' : 'Point check'}
           </button>
           {!siteMode && (
             <div className="search">
@@ -149,6 +156,9 @@ export default function App() {
       </header>
 
       {error && <div className="banner error">{error}</div>}
+      {siteError && !error && (
+        <div className="banner">County screening available. {siteError}</div>
+      )}
       {!payload && !error && <div className="banner">Loading…</div>}
 
       {payload && (
@@ -163,6 +173,8 @@ export default function App() {
                 setDossier(null)
               }}
               onSiteClick={(evt) => {
+                const county = payload.counties.find((c) => c.countyFips === evt.countyFips)
+                const metric = county?.factors.find((f) => f.id === 'thermal')?.metric ?? null
                 setDossier(
                   buildSiteDossier({
                     lat: evt.lat,
@@ -171,6 +183,7 @@ export default function App() {
                     countyName: evt.countyName,
                     countyRank: evt.countyRank,
                     countyScore: evt.countyScore,
+                    countyThermalMetric: metric ?? null,
                     thermalPoints,
                     infraCells,
                   }),
