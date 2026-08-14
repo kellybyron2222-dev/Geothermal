@@ -60,7 +60,8 @@ function LimitationsCell({ limitations }: { limitations: string[] }) {
 }
 
 export function ComparePanel({ slots, onRemove, onClear, hint }: Props) {
-  const empty = slots.length === 0
+  if (slots.length === 0 && !hint) return null
+
   const showNotRankingBanner = slots.length >= 2
 
   return (
@@ -81,12 +82,7 @@ export function ComparePanel({ slots, onRemove, onClear, hint }: Props) {
 
       {hint && <p className="compare-hint">{hint}</p>}
 
-      {empty ? (
-        <p className="compare-empty muted">
-          Pin up to {MAX_COMPARE} Point/AOI evidence snapshots to compare control quality
-          side-by-side — not a ranking, not a score.
-        </p>
-      ) : (
+      {slots.length === 0 ? null : (
         <div className="compare-table-wrap">
           <table className="compare-table">
             <thead>

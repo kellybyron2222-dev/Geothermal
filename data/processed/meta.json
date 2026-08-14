@@ -1,31 +1,90 @@
 {
-  "methodologyVersion": "0.3.1",
+  "methodologyVersion": "0.4.0",
+  "dataDepth": true,
+  "dataDepthStatus": "thermal_spine_live_rrc_proxy_accepted",
+  "residualRisk": "Thermal spine live (Stanford T@depth + SMU confidence + substations). Risk layers: TexNet=loaded, PAD-US=loaded (Fee GAP_Sts 1\u20132; friction if intersect area/county > 1%). Well density = SMU control proxy (NOT RRC Digital Map) \u2014 buyer-accepted residual for Data Depth STOP; replace with RRC Digital Map when MFT access allows. Phase 3 slice 1 shipping (watchlist/digest/rules) \u2014 not accounts/email.",
+  "thermalMode": "stanford_tdepth",
   "weights": {
-    "thermal": 0.6,
-    "infra": 0.4
+    "thermal": 0.55,
+    "infra": 0.45
   },
   "confidenceThresholds": {
-    "tLow": 9.0,
-    "tHigh": 21.0
+    "tLow": 22.0,
+    "tHigh": 71.5
   },
   "nCounties": 254,
+  "tdepthKm": 4.0,
+  "riskLayerStatus": {
+    "texnet": "loaded",
+    "padus": "loaded",
+    "rrcWellDensity": "proxy_smu_control"
+  },
   "sources": {
     "thermal": {
-      "name": "IHFC Global Heat Flow Database Release 2024 (gradient preferred; heat flow fallback)",
-      "vintage": "2024"
+      "name": "Stanford Thermal Earth Model / GDR 1592 (model T@depth \u2014 not measured)",
+      "vintage": "GDR-1592",
+      "model": true
     },
     "infra": {
-      "name": "HIFLD Electric Power Transmission Lines",
+      "name": "HIFLD Electric Power Transmission Lines; HIFLD Electric Substations",
       "vintage": "static extract 2026-08-13"
+    },
+    "substations": {
+      "name": "HIFLD Electric Substations",
+      "vintage": null
+    },
+    "smu_bht": {
+      "name": "SMU / GDR 1704 TX BHT-HF (confidence)",
+      "vintage": null
+    },
+    "rrc_wells": {
+      "name": "SMU control-point density PROXY \u2014 NOT RRC Digital Map",
+      "vintage": "proxy_smu_control_not_rrc_digital_map",
+      "proxy": true,
+      "note": "smu_control_density_proxy_rrc_pending"
+    },
+    "texnet": {
+      "name": "TexNet earthquake catalog (caution flag)",
+      "vintage": "texnet_arcgis_mge2.5",
+      "status": "loaded"
+    },
+    "padus": {
+      "name": "PAD-US protected areas (friction gate)",
+      "vintage": "padus_2.1_fee_gap12_frac01",
+      "status": "loaded"
+    },
+    "ihfc_qc": {
+      "name": "IHFC Global Heat Flow Database Release 2024 (gradient preferred; heat flow fallback)",
+      "vintage": "2024",
+      "role": "QC / citation / legacy fallback \u2014 not primary opportunity when Data Depth active"
     },
     "counties": {
       "name": "Census cb_2023_us_county_500k",
       "vintage": "2023"
     }
   },
-  "disclaimer": "Regional screening index for next-gen geothermal focus in Texas. Gradient and heat-flow counties are separate cohorts \u2014 scores are not scientifically comparable across thermal metrics. Not a resource map, not interconnection feasibility, not a drill recommendation.",
-  "thermalCohorts": {
-    "note": "S_thermal scaled within metric cohorts; do not treat one statewide ladder as cross-metric.",
-    "minGradientN": 3
+  "layerVintages": {
+    "tdepth": "GDR-1592",
+    "ihfc": "2024",
+    "transmission": "static extract 2026-08-13",
+    "substations": null,
+    "smu_bht": null,
+    "rrc": "proxy_smu_control_not_rrc_digital_map",
+    "texnet": "texnet_arcgis_mge2.5",
+    "padus": "padus_2.1_fee_gap12_frac01"
+  },
+  "disclaimer": "Thermal spine live (Stanford T@depth + SMU confidence + substations). TexNet/PAD-US risk layers: see status. Phase 3 slice 1 shipping (local watchlist, in-app digest, rule candidates) \u2014 not accounts/email. Regional screening index for next-gen geothermal focus in Texas (methodology 0.4.0). Thermal opportunity is labeled model T@depth (Stanford) \u2014 not measured temperature. Measured SMU/BHT/IHFC and well-density band inform confidence only (well density currently SMU control proxy \u2014 NOT RRC Digital Map). Grid proximity is not interconnection feasibility. Not a resource map or drill recommendation.",
+  "honesty": {
+    "modelVsMeasured": true,
+    "ihfcRole": "qc_citation_or_legacy_fallback",
+    "noDiyBhtOpportunity": true,
+    "nullableRiskFlags": true,
+    "rrcDigitalMap": false
+  },
+  "publishId": "0.4.0|ihfc=2024|padus=padus_2.1_fee_gap12_frac01|rrc=proxy_smu_control_not_rrc_digital_map|smu_bht=|substations=|tdepth=GDR-1592|texnet=texnet_arcgis_mge2.5|transmission=static extract 2026-08-13",
+  "phase3": {
+    "slice": 1,
+    "rulesVersion": "v0",
+    "watchlistLocal": true
   }
 }

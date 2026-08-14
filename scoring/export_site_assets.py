@@ -26,17 +26,15 @@ CRS_WEB = "EPSG:4326"
 
 
 def export_thermal_points() -> Path:
+    """Export IHFC heat-flow (q, mW/m²) points only — do not mix with gradient."""
     xlsx = RAW / "thermal" / "IHFC_2024_GHFDB.xlsx"
     df = pd.read_excel(xlsx, sheet_name=0, header=5)
     lat = pd.to_numeric(df["lat_NS"], errors="coerce")
     lon = pd.to_numeric(df["long_EW"], errors="coerce")
     q = pd.to_numeric(df["q"], errors="coerce")
-    g_cor = pd.to_numeric(df.get("T_grad_mean_cor"), errors="coerce")
-    g_mean = pd.to_numeric(df.get("T_grad_mean"), errors="coerce")
-    grad = g_cor.where(g_cor.notna(), g_mean)
     env = df["environment"].astype(str).str.lower() if "environment" in df.columns else ""
 
-    work = pd.DataFrame({"lat": lat, "lon": lon, "q": q, "grad": grad})
+    work = pd.DataFrame({"lat": lat, "lon": lon, "q": q})
     if len(env):
         marine = env.str.contains("marine") | env.str.contains("ocean")
         work = work[~marine.values]
@@ -48,24 +46,29 @@ def export_thermal_points() -> Path:
         & (work["lat"] <= 36.6)
     ]
     work.loc[(work["q"] <= 0) | (work["q"] >= 300), "q"] = np.nan
-    work.loc[(work["grad"] < 5) | (work["grad"] > 150), "grad"] = np.nan
-    work = work[work["q"].notna() | work["grad"].notna()]
+    work = work[work["q"].notna()].copy()
 
     points = [
         {
             "lat": round(float(r.lat), 5),
             "lon": round(float(r.lon), 5),
-            "q": None if pd.isna(r.q) else round(float(r.q), 2),
-            "grad": None if pd.isna(r.grad) else round(float(r.grad), 2),
+            "q": round(float(r.q), 2),
         }
         for r in work.itertuples(index=False)
     ]
-    payload = {"n": len(points), "points": points, "source": "IHFC_2024_GHFDB"}
+    payload = {
+        "n": len(points),
+        "points": points,
+        "source": "IHFC_2024_GHFDB",
+        "metric": "heat_flow_mWm2",
+        "unit": "mW/m²",
+        "note": "Heat flow only — geothermal gradient points deferred until a clean source.",
+    }
     out = PROCESSED / "thermal_points.json"
     out.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
     WEB.mkdir(parents=True, exist_ok=True)
     (WEB / "thermal_points.json").write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
-    print(f"Thermal points: {len(points)} -> {out}")
+    print(f"Thermal points (heat flow only): {len(points)} -> {out}")
     return out
 
 

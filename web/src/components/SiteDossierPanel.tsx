@@ -74,6 +74,22 @@ export function SiteDossierPanel({
         {dossier.evidenceVerb}
       </div>
 
+      {dossier.countyModelThermal && (
+        <div className="metric-banner model-tdepth">
+          <strong>Local IHFC = measured control / QC</strong>
+          <div className="muted tiny banner-detail">
+            Not a Stanford T@depth site opportunity score. County screening (if shown) uses
+            model T@depth as regional context only.
+          </div>
+          {dossier.countyTdepthMean != null && (
+            <div className="muted tiny banner-detail">
+              County model T@depth: {dossier.countyTdepthMean.toFixed(1)} °C
+              {dossier.countyTdepthKm != null ? ` @ ${dossier.countyTdepthKm} km` : ''}
+            </div>
+          )}
+        </div>
+      )}
+
       <h3>Local control quality</h3>
       <div className="score-row">
         <div>
@@ -189,12 +205,30 @@ export function SiteDossierPanel({
           {dossier.countyScore != null && (
             <> · screening {dossier.countyScore.toFixed(1)}</>
           )}
-          {dossier.countyThermalMetric === 'gradient_C_per_km' && (
-            <> · county thermal: <strong>gradient</strong></>
+          {dossier.countyModelThermal && (
+            <>
+              {' '}
+              · county thermal: <strong>model T@depth</strong>
+              {dossier.countyTdepthMean != null && (
+                <>
+                  {' '}
+                  ({dossier.countyTdepthMean.toFixed(1)} °C
+                  {dossier.countyTdepthKm != null
+                    ? ` @ ${dossier.countyTdepthKm} km`
+                    : ''}
+                  )
+                </>
+              )}
+            </>
           )}
-          {dossier.countyThermalMetric === 'heat_flow_mWm2' && (
-            <> · county thermal: <strong>heat-flow fallback</strong></>
-          )}
+          {!dossier.countyModelThermal &&
+            dossier.countyThermalMetric === 'gradient_C_per_km' && (
+              <> · county thermal: <strong>gradient</strong></>
+            )}
+          {!dossier.countyModelThermal &&
+            dossier.countyThermalMetric === 'heat_flow_mWm2' && (
+              <> · county thermal: <strong>heat-flow fallback</strong></>
+            )}
         </p>
       ) : (
         <p className="muted">No containing scored county for this click.</p>

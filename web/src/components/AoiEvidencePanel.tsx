@@ -164,6 +164,21 @@ export function AoiEvidencePanel({
         {dossier.evidenceVerb}
       </div>
 
+      {dossier.intersectingCounties.some(
+        (c) =>
+          c.countyModelThermal === true ||
+          c.countyThermalMode === 'stanford_tdepth' ||
+          !!c.countyThermalMetric?.startsWith('tdepth'),
+      ) && (
+        <div className="metric-banner model-tdepth">
+          <strong>Local IHFC = measured control / QC</strong>
+          <div className="muted tiny banner-detail">
+            Not a Stanford T@depth AOI opportunity score. Intersecting county screening uses
+            model T@depth as regional context only.
+          </div>
+        </div>
+      )}
+
       <h3>Local control quality</h3>
       <div className="score-row">
         <div>
@@ -247,13 +262,26 @@ export function AoiEvidencePanel({
       <p className="muted tiny">Not a score for this AOI</p>
       {dossier.intersectingCounties.length > 0 ? (
         <ul className="aoi-county-context">
-          {dossier.intersectingCounties.map((c) => (
-            <li key={c.countyFips}>
-              {c.countyName} County
-              {c.countyRank != null && <> · rank #{c.countyRank}</>}
-              {c.countyScore != null && <> · screening {c.countyScore.toFixed(1)}</>}
-            </li>
-          ))}
+          {dossier.intersectingCounties.map((c) => {
+            const model =
+              c.countyModelThermal === true ||
+              c.countyThermalMode === 'stanford_tdepth' ||
+              !!c.countyThermalMetric?.startsWith('tdepth')
+            return (
+              <li key={c.countyFips}>
+                {c.countyName} County
+                {c.countyRank != null && <> · rank #{c.countyRank}</>}
+                {c.countyScore != null && <> · screening {c.countyScore.toFixed(1)}</>}
+                {model && c.countyTdepthMean != null && (
+                  <>
+                    {' '}
+                    · model T@depth {c.countyTdepthMean.toFixed(1)} °C
+                    {c.countyTdepthKm != null ? ` @ ${c.countyTdepthKm} km` : ''}
+                  </>
+                )}
+              </li>
+            )
+          })}
         </ul>
       ) : (
         <p className="muted">No intersecting scored counties detected for this AOI.</p>

@@ -1,0 +1,16 @@
+{
+  "layer": "basement_domains",
+  "source": "USGS Data Series 898 \u2014 Basement domains of the conterminous United States",
+  "citation": "https://doi.org/10.3133/ds898",
+  "vintage": "DS-898",
+  "role": "map_context_only",
+  "inScreeningScore": false,
+  "honesty": "Crystalline basement domain context for heat architecture (radiogenic basement / crustal domains). Not surface sedimentary bedrock, and not used to rank counties.",
+  "nFeatures": 4,
+  "bbox": [
+    -106.7,
+    25.8,
+    -93.5,
+    36.6
+  ]
+}

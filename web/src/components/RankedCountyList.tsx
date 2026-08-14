@@ -1,8 +1,8 @@
 import type { ScreeningCounty } from '../types/screening'
 
-export type CohortFilter = 'gradient' | 'heat-flow' | 'all'
+export type CohortFilter = 'tdepth' | 'gradient' | 'heat-flow' | 'all'
 
-export type ThermalKind = 'gradient' | 'heat-flow' | 'none'
+export type ThermalKind = 'tdepth' | 'gradient' | 'heat-flow' | 'none'
 
 const FOCUS_CAP = 3
 const IGNORE_CAP = 3
@@ -10,9 +10,27 @@ const IGNORE_CAP = 3
 export function thermalKind(county: ScreeningCounty): ThermalKind {
   const thermal = county.factors.find((f) => f.id === 'thermal')
   if (thermal?.rawValue == null || !thermal.metric) return 'none'
+  if (thermal.metric.startsWith('tdepth')) return 'tdepth'
   if (thermal.metric === 'gradient_C_per_km') return 'gradient'
   if (thermal.metric === 'heat_flow_mWm2') return 'heat-flow'
   return 'none'
+}
+
+/** Prefer T@depth cohort when any counties use model thermal; else gradient. */
+export function defaultCohort(counties: ScreeningCounty[]): CohortFilter {
+  if (counties.some((c) => thermalKind(c) === 'tdepth')) return 'tdepth'
+  return 'gradient'
+}
+
+function isModelThermal(county: ScreeningCounty, kind: ThermalKind): boolean {
+  if (county.modelThermal === true) return true
+  return kind === 'tdepth'
+}
+
+function fmtTdepth(mean: number | null | undefined, km: number | null | undefined): string | null {
+  if (mean == null || Number.isNaN(mean)) return null
+  const depth = km != null && !Number.isNaN(km) ? ` @ ${km} km` : ''
+  return `${mean.toFixed(0)} °C${depth}`
 }
 
 interface RankedRow {
@@ -70,6 +88,8 @@ interface Props {
   onToggleFocus: (fips: string) => void
   onToggleIgnore: (fips: string) => void
   query?: string
+  /** When true / stanford_tdepth, hide legacy Gradient / Heat-flow / All tabs. */
+  dataDepth?: boolean
 }
 
 export function RankedCountyList({
@@ -83,12 +103,15 @@ export function RankedCountyList({
   onToggleFocus,
   onToggleIgnore,
   query = '',
+  dataDepth = false,
 }: Props) {
   const q = query.trim().toLowerCase()
   const base = q
     ? counties.filter((c) => c.name.toLowerCase().includes(q))
     : counties
   const rows = buildRows(base, cohort)
+  const hasTdepth = counties.some((c) => thermalKind(c) === 'tdepth')
+  const hideLegacyCohorts = dataDepth && hasTdepth
 
   const focusCount = focusFips.size
   const ignoreCount = ignoreFips.size
@@ -99,6 +122,10 @@ export function RankedCountyList({
         <h2>Ranked counties</h2>
         <p className="checklist-cue">
           Leave with ~{FOCUS_CAP} focus / ~{IGNORE_CAP} ignore counties
+          <span className="muted tiny">
+            {' '}
+            · Focus is session triage — does not feed Watchlist digests
+          </span>
           <span className="muted">
             {' '}
             ({focusCount}/{FOCUS_CAP} focus · {ignoreCount}/{IGNORE_CAP} ignore)
@@ -107,44 +134,67 @@ export function RankedCountyList({
       </div>
 
       <div className="cohort-tabs" role="tablist" aria-label="Thermal cohort filter">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={cohort === 'gradient'}
-          className={cohort === 'gradient' ? 'cohort-tab active' : 'cohort-tab'}
-          onClick={() => onCohortChange('gradient')}
-        >
-          Gradient control
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={cohort === 'heat-flow'}
-          className={cohort === 'heat-flow' ? 'cohort-tab active' : 'cohort-tab'}
-          onClick={() => onCohortChange('heat-flow')}
-        >
-          Heat-flow proxy
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={cohort === 'all'}
-          className={cohort === 'all' ? 'cohort-tab active' : 'cohort-tab'}
-          onClick={() => onCohortChange('all')}
-        >
-          All (not comparable)
-        </button>
+        {hasTdepth && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cohort === 'tdepth'}
+            className={cohort === 'tdepth' ? 'cohort-tab active' : 'cohort-tab'}
+            onClick={() => onCohortChange('tdepth')}
+          >
+            T@depth (model)
+          </button>
+        )}
+        {!hideLegacyCohorts && (
+          <>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={cohort === 'gradient'}
+              className={cohort === 'gradient' ? 'cohort-tab active' : 'cohort-tab'}
+              onClick={() => onCohortChange('gradient')}
+            >
+              Gradient control
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={cohort === 'heat-flow'}
+              className={cohort === 'heat-flow' ? 'cohort-tab active' : 'cohort-tab'}
+              onClick={() => onCohortChange('heat-flow')}
+            >
+              Heat-flow proxy
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={cohort === 'all'}
+              className={cohort === 'all' ? 'cohort-tab active' : 'cohort-tab'}
+              onClick={() => onCohortChange('all')}
+            >
+              All (not comparable)
+            </button>
+          </>
+        )}
       </div>
+
+      {hideLegacyCohorts && (
+        <div className="muted tiny cohort-depth-note">
+          Legacy Gradient / Heat-flow / All cohorts hidden while Data Depth model T@depth is
+          active — scores stay within the T@depth cohort.
+        </div>
+      )}
 
       {cohort === 'all' && (
         <div className="cohort-warn" role="status">
-          Scores are not scientifically comparable across thermal metrics. Prefer Gradient
-          or Heat-flow lists for ranking.
+          Scores are not scientifically comparable across thermal metrics. Prefer a single
+          cohort list (T@depth, Gradient, or Heat-flow) for ranking.
         </div>
       )}
 
       <div className="ranked-list-meta muted tiny">
         {rows.length} counties
+        {cohort === 'tdepth' && ' · ranked within model T@depth cohort'}
         {cohort === 'gradient' && ' · ranked within gradient cohort'}
         {cohort === 'heat-flow' && ' · ranked within heat-flow cohort'}
         {cohort === 'all' && ' · statewide rank (mixed metrics)'}
@@ -155,16 +205,22 @@ export function RankedCountyList({
         {rows.map(({ county, displayRank, tied, kind }) => {
           const conf = county.confidence
           const demoted = conf === 'Low' || conf === 'Unknown'
+          const isSelected = selectedFips === county.countyFips
           const isFocus = focusFips.has(county.countyFips)
           const isIgnore = ignoreFips.has(county.countyFips)
           const rankLabel = cohort === 'all' ? county.rank : displayRank
+          const model = isModelThermal(county, kind)
+          const tdepthLabel =
+            kind === 'tdepth' || county.modelThermal
+              ? fmtTdepth(county.tdepthMean, county.tdepthKm)
+              : null
 
           return (
             <li
               key={county.countyFips}
               className={[
                 'county-row',
-                selectedFips === county.countyFips ? 'selected' : '',
+                isSelected ? 'selected' : '',
                 demoted ? 'row-demoted' : '',
                 isFocus ? 'is-focus' : '',
                 isIgnore ? 'is-ignore' : '',
@@ -182,21 +238,47 @@ export function RankedCountyList({
                   {tied && <span className="tied-cue">tied</span>}
                 </span>
                 <span className="row-name">{county.name}</span>
-                <span className="row-score">{county.screeningScore.toFixed(1)}</span>
+                <span className="row-score">
+                  {county.screeningScore.toFixed(1)}
+                  {isSelected && tdepthLabel && (
+                    <span
+                      className="row-tdepth"
+                      title="Raw model T@depth (Stanford) — not measured BHT"
+                    >
+                      {tdepthLabel}
+                    </span>
+                  )}
+                </span>
                 <span className="row-chips">
-                  <span className={`conf-badge conf-${conf.toLowerCase()}`}>{conf}</span>
+                  {isSelected && (
+                    <span className={`conf-badge conf-${conf.toLowerCase()}`}>{conf}</span>
+                  )}
                   <span className={`metric-chip metric-${kind}`}>
+                    {kind === 'tdepth' && 'T@depth'}
                     {kind === 'gradient' && 'Gradient'}
                     {kind === 'heat-flow' && 'HF'}
                     {kind === 'none' && 'None'}
                   </span>
+                  {isSelected && kind !== 'none' && (
+                    <span
+                      className={`metric-chip ${model ? 'metric-model' : 'metric-measured'}`}
+                      title={
+                        model
+                          ? 'Model thermal (Stanford T@depth) — not measured BHT'
+                          : 'Measured / IHFC thermal control'
+                      }
+                    >
+                      {model ? 'Model' : 'Meas.'}
+                    </span>
+                  )}
                 </span>
               </button>
-              <div className="row-marks">
+              <div className="row-marks" aria-hidden={!isSelected}>
                 <button
                   type="button"
                   className={isFocus ? 'mark-btn focus on' : 'mark-btn focus'}
                   disabled={!isFocus && focusCount >= FOCUS_CAP}
+                  tabIndex={isSelected ? 0 : -1}
                   title={
                     isFocus
                       ? 'Remove focus'
@@ -215,6 +297,7 @@ export function RankedCountyList({
                   type="button"
                   className={isIgnore ? 'mark-btn ignore on' : 'mark-btn ignore'}
                   disabled={!isIgnore && ignoreCount >= IGNORE_CAP}
+                  tabIndex={isSelected ? 0 : -1}
                   title={
                     isIgnore
                       ? 'Remove ignore'

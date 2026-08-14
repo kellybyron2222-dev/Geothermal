@@ -80,3 +80,36 @@ When documents conflict, **red-team-mvp.md wins**.
 | Methodology bump | `0.3.0` when gradient is live in ScreeningScore |
 
 Phase 1.5 / immediate scoring upgrade: switch ScreeningScore thermal leg to gradient; keep weights 0.60 / 0.40.
+
+---
+
+## D5 — Barnes 1992 geologic map (2026-08-14)
+
+**Locked: KEEP as must-have map context overlay**
+
+| Item | Decision |
+|------|----------|
+| Layer | USGS DS 170 digital of BEG Geologic Map of Texas (Barnes / Hartmann & Scranton 1992) |
+| Role | Structural / surface-geology **context** for Texas screening |
+| In ScreeningScore? | **Never** |
+| Replace with GDT 250k / Ewing tectonic? | Only if a later judgment says so; not required to keep Barnes |
+
+### Why this lock
+
+Product owner identified this map as the structural geology control layer for regional interpretation. It stays in the product as an interrogable overlay. It does not become a ranking factor (surface sedimentary geology ≠ heat source; fabric is context).
+
+---
+
+## D6 — Phase 3 slice 1 scope (2026-08-14)
+
+**Locked in [phase3.md](phase3.md) / [reviews/2026-08-14-phase3-scope/02-judgment-scope.md](reviews/2026-08-14-phase3-scope/02-judgment-scope.md):**
+
+- Watchlist + in-app digest + rule-based candidates  
+- **No auth** in slice 1  
+- No email/push, parcels, CEII, ML prospects, new map layers as P3 work  
+
+## D7 — Phase 3 COMPLETE (2026-08-14)
+
+**Authoritative stop:** [reviews/2026-08-14-phase3-complete/06-phase3-stop.md](reviews/2026-08-14-phase3-complete/06-phase3-stop.md)
+
+Scoped Phase 3 = local cadence (slice 1 + slice 2: auto-digest, export/import, tests, TexNet demote, docs). Auth / email / GLO / AOI watch pins / economics remain **deferred** — not incomplete Phase 3.

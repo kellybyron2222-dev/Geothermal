@@ -26,6 +26,20 @@ export interface AoiCountyContext {
   countyRank: number | null
   countyScore: number | null
   countyThermalMetric: string | null
+  countyModelThermal?: boolean
+  countyThermalMode?: string | null
+  countyTdepthMean?: number | null
+  countyTdepthKm?: number | null
+}
+
+function isModelTdepthCounty(c: {
+  countyThermalMetric: string | null
+  countyModelThermal?: boolean
+  countyThermalMode?: string | null
+}): boolean {
+  if (c.countyModelThermal === true) return true
+  if (c.countyThermalMode === 'stanford_tdepth') return true
+  return !!c.countyThermalMetric?.startsWith('tdepth')
 }
 
 export interface AoiDossier {
@@ -254,11 +268,26 @@ export interface CountyFeatureLike {
     rank?: number
     screeningScore?: number
     thermalMetric?: string
+    modelThermal?: boolean
+    thermalMode?: string
+    tdepthMean?: number | null
+    tdepthKm?: number | null
   }
   geometry?: {
     type: string
     coordinates: unknown
   }
+}
+
+export type CountyScreeningLookup = {
+  name: string
+  rank: number
+  screeningScore: number
+  thermalMetric: string | null
+  modelThermal?: boolean
+  thermalMode?: string | null
+  tdepthMean?: number | null
+  tdepthKm?: number | null
 }
 
 function countyContainsPoint(
@@ -290,15 +319,7 @@ function countyContainsPoint(
 export function countiesIntersectingAoi(
   ring: LonLat[],
   countyFeatures: CountyFeatureLike[],
-  countiesByFips: Map<
-    string,
-    {
-      name: string
-      rank: number
-      screeningScore: number
-      thermalMetric: string | null
-    }
-  >,
+  countiesByFips: Map<string, CountyScreeningLookup>,
 ): AoiCountyContext[] {
   const samples = openRing(ring)
   const c = ringCentroid(ring)
@@ -320,16 +341,22 @@ export function countiesIntersectingAoi(
     if (!hit) continue
     seen.add(fips)
     const row = countiesByFips.get(fips)
+    const props = feat.properties
     out.push({
       countyFips: fips,
-      countyName: row?.name ?? feat.properties?.name ?? fips,
-      countyRank: row?.rank ?? (typeof feat.properties?.rank === 'number' ? feat.properties.rank : null),
+      countyName: row?.name ?? props?.name ?? fips,
+      countyRank: row?.rank ?? (typeof props?.rank === 'number' ? props.rank : null),
       countyScore:
         row?.screeningScore ??
-        (typeof feat.properties?.screeningScore === 'number'
-          ? feat.properties.screeningScore
-          : null),
-      countyThermalMetric: row?.thermalMetric ?? feat.properties?.thermalMetric ?? null,
+        (typeof props?.screeningScore === 'number' ? props.screeningScore : null),
+      countyThermalMetric: row?.thermalMetric ?? props?.thermalMetric ?? null,
+      countyModelThermal: row?.modelThermal ?? props?.modelThermal,
+      countyThermalMode: row?.thermalMode ?? props?.thermalMode ?? null,
+      countyTdepthMean:
+        row?.tdepthMean ??
+        (typeof props?.tdepthMean === 'number' ? props.tdepthMean : null),
+      countyTdepthKm:
+        row?.tdepthKm ?? (typeof props?.tdepthKm === 'number' ? props.tdepthKm : null),
     })
     if (out.length >= 8) break
   }
@@ -417,7 +444,25 @@ export function buildAoiDossier(args: {
     )
   }
 
-  if (args.intersectingCounties.some((c) => c.countyThermalMetric === 'heat_flow_mWm2')) {
+  const modelCounties = args.intersectingCounties.filter(isModelTdepthCounty)
+  if (modelCounties.length > 0) {
+    limitations.push(
+      'IHFC points inside the AOI are measured control / QC — not a Stanford T@depth site or AOI opportunity score.',
+    )
+    limitations.push(
+      'Intersecting county screening uses model T@depth (Stanford) — regional context only; this panel does not invent an AOI score from the model.',
+    )
+    const withT = modelCounties.find((c) => c.countyTdepthMean != null)
+    if (withT?.countyTdepthMean != null) {
+      const depthBit =
+        withT.countyTdepthKm != null ? ` @ ${withT.countyTdepthKm} km` : ''
+      limitations.push(
+        `Example county model T@depth (${withT.countyName}): mean ${withT.countyTdepthMean.toFixed(1)} °C${depthBit} — not measured for this AOI.`,
+      )
+    }
+  } else if (
+    args.intersectingCounties.some((c) => c.countyThermalMetric === 'heat_flow_mWm2')
+  ) {
     limitations.push(
       'At least one intersecting county used heat-flow fallback for county screening (gradient unavailable at county scale).',
     )
@@ -440,7 +485,7 @@ export function buildAoiDossier(args: {
       lon: p.lon,
       distKm: Math.round(p.distKm * 10) / 10,
       q: p.q,
-      grad: p.grad,
+      grad: p.grad ?? null,
     })),
     intersectingCounties: args.intersectingCounties,
     largeAoiSmear,

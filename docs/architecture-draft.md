@@ -51,6 +51,8 @@ Add API/DB only when Phase 2 AOI queries require them.
 
 ## Ops
 
-- `data/raw/` gitignored  
-- Commit or release **processed** outputs  
-- Document download URLs and licenses in `docs/data-sources.md` (created in Milestone 1)
+- `data/raw/` gitignored — offline cache of upstream downloads  
+- `data/raw/_manifest.json` committed — retrieved_at / checksum / cadence audit  
+- Commit or release **processed client** outputs under `web/public/data/`  
+- Refresh on **preset cadence** (ETL/CI), never live upstream from the browser  
+- Document download URLs, licenses, and cadences in [data-sources.md](data-sources.md) + [data-strategy-texas-geothermal.md](data-strategy-texas-geothermal.md) §8  

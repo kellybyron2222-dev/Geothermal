@@ -1,0 +1,16 @@
+{
+  "n_counties": 254,
+  "n_with_tdepth": 254,
+  "n_with_control": 246,
+  "n_with_substation_dist": 254,
+  "n_texnet_caution": 67,
+  "n_padus_friction": 44,
+  "texnet_status": "loaded",
+  "padus_status": "loaded",
+  "padus_vintage": "padus_2.1_fee_gap12_frac01",
+  "well_density_note": "smu_control_density_proxy_rrc_pending",
+  "well_density_honesty": "SMU control-point density proxy \u2014 NOT RRC Digital Map well density",
+  "primary_tdepth_km": 4.0,
+  "crs_analysis": "EPSG:3083",
+  "output": "C:\\Developer\\Geothermal\\data\\processed\\data_depth_features.csv"
+}

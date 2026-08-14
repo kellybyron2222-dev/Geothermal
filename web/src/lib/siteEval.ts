@@ -2,7 +2,8 @@ export interface ThermalPoint {
   lat: number
   lon: number
   q: number | null
-  grad: number | null
+  /** Deferred — not mixed with heat flow on map overlays. */
+  grad?: number | null
 }
 
 export interface InfraCell {
@@ -21,6 +22,11 @@ export interface SiteDossier {
   countyRank: number | null
   countyScore: number | null
   countyThermalMetric: string | null
+  /** County opportunity uses Stanford model T@depth (not a site score). */
+  countyModelThermal: boolean
+  countyThermalMode: string | null
+  countyTdepthMean: number | null
+  countyTdepthKm: number | null
   transmissionDistKm: number | null
   nearbyCount: number
   nearestKm: number | null
@@ -42,6 +48,16 @@ export interface SiteDossier {
     | 'Sparse control'
     | 'Moderate control'
     | 'Adequate control to keep investigating'
+}
+
+function isModelTdepthCounty(args: {
+  countyThermalMetric: string | null
+  countyModelThermal?: boolean
+  countyThermalMode?: string | null
+}): boolean {
+  if (args.countyModelThermal === true) return true
+  if (args.countyThermalMode === 'stanford_tdepth') return true
+  return !!args.countyThermalMetric?.startsWith('tdepth')
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -95,6 +111,10 @@ export function buildSiteDossier(args: {
   countyRank: number | null
   countyScore: number | null
   countyThermalMetric: string | null
+  countyModelThermal?: boolean
+  countyThermalMode?: string | null
+  countyTdepthMean?: number | null
+  countyTdepthKm?: number | null
   thermalPoints: ThermalPoint[]
   infraCells: InfraCell[]
   radiusKm?: number
@@ -112,6 +132,15 @@ export function buildSiteDossier(args: {
   const withQ = nearby.filter((p) => p.q != null)
   const nearestKm = nearby[0]?.distKm ?? null
   const conf = siteConfidence(nearby.length, nearestKm)
+  const countyModelThermal = isModelTdepthCounty(args)
+  const countyTdepthMean =
+    args.countyTdepthMean != null && Number.isFinite(args.countyTdepthMean)
+      ? args.countyTdepthMean
+      : null
+  const countyTdepthKm =
+    args.countyTdepthKm != null && Number.isFinite(args.countyTdepthKm)
+      ? args.countyTdepthKm
+      : null
 
   const mean = (vals: number[]) =>
     vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
@@ -133,7 +162,21 @@ export function buildSiteDossier(args: {
     limitations.push('No local geothermal gradient points; heat-flow observations only.')
   }
 
-  if (args.countyThermalMetric === 'heat_flow_mWm2') {
+  if (countyModelThermal) {
+    limitations.push(
+      'Local IHFC points here are measured control / QC near the click — not a Stanford T@depth site opportunity score.',
+    )
+    limitations.push(
+      'Containing county screening uses model T@depth (Stanford) — regional context only; this panel does not invent a site score from the model.',
+    )
+    if (countyTdepthMean != null) {
+      const depthBit =
+        countyTdepthKm != null ? ` @ ${countyTdepthKm} km` : ''
+      limitations.push(
+        `County model T@depth context: mean ${countyTdepthMean.toFixed(1)} °C${depthBit} — not measured at this point.`,
+      )
+    }
+  } else if (args.countyThermalMetric === 'heat_flow_mWm2') {
     limitations.push(
       'Containing county screening used heat-flow fallback (gradient unavailable at county scale).',
     )
@@ -153,6 +196,10 @@ export function buildSiteDossier(args: {
     countyRank: args.countyRank,
     countyScore: args.countyScore,
     countyThermalMetric: args.countyThermalMetric,
+    countyModelThermal,
+    countyThermalMode: args.countyThermalMode ?? null,
+    countyTdepthMean,
+    countyTdepthKm,
     transmissionDistKm: lookupInfraDistKm(args.lat, args.lon, args.infraCells),
     nearbyCount: nearby.length,
     nearestKm: nearestKm == null ? null : Math.round(nearestKm * 10) / 10,
@@ -166,7 +213,7 @@ export function buildSiteDossier(args: {
       lon: p.lon,
       distKm: Math.round(p.distKm * 10) / 10,
       q: p.q,
-      grad: p.grad,
+      grad: p.grad ?? null,
     })),
     limitations,
     evidenceVerb: evidenceVerb(conf),

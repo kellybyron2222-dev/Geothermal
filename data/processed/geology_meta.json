@@ -1,0 +1,21 @@
+{
+  "layer": "geology_barnes_1992",
+  "source": "USGS Data Series 170 (digitized BEG Geologic Map of Texas, Barnes/Hartmann/Scranton 1992)",
+  "scale": "1:500,000",
+  "role": "map_context_only",
+  "inScreeningScore": false,
+  "nUnits": 353,
+  "nFaults": 4749,
+  "eras": {
+    "cenozoic": "#e8b84a",
+    "mesozoic": "#7fad6b",
+    "paleozoic": "#6b7db8",
+    "precambrian": "#c45c7a",
+    "other": "#b0a898"
+  },
+  "honesty": "Surface geologic map (Barnes 1992). Context overlay for structural / stratigraphic fabric. Not used in ScreeningScore. Not measured temperature.",
+  "downloads": {
+    "usgsDs170": "https://pubs.usgs.gov/ds/2005/170/",
+    "zip": "https://pubs.usgs.gov/ds/2005/170/downloads/170.zip"
+  }
+}

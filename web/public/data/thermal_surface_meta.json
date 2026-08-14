@@ -1,0 +1,15 @@
+{
+  "layer": "thermal_surface",
+  "source": "IHFC Global Heat Flow Database Release 2024",
+  "role": "map_context_only",
+  "inScreeningScore": false,
+  "notBottomHoleTemperature": true,
+  "metric": "heat_flow_mWm2",
+  "unit": "mW/m\u00b2",
+  "method": "IDW within radius; cells require \u2265min points inside radius",
+  "cellKmApprox": 12.0,
+  "maxRadiusKm": 25.0,
+  "minPoints": 2,
+  "nCells": 6649,
+  "honesty": "Local measured heat-flow surface only near IHFC q controls. Gradient excluded (different units). Does not interpolate across sparse regions. Not BHT. Not a ranking layer."
+}

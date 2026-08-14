@@ -1,15 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ScreeningCounty } from './types/screening'
+import type { ScreeningCounty, ScreeningMeta } from './types/screening'
 import { AoiEvidencePanel } from './components/AoiEvidencePanel'
 import { ComparePanel } from './components/ComparePanel'
 import { DetailPanel } from './components/DetailPanel'
 import { MapView, type EvidenceMode } from './components/MapView'
+import { LeftRail } from './components/LeftRail'
+import {
+  DEFAULT_LAYER_TOGGLES,
+  type LayerToggles,
+} from './components/LayerControls'
 import { Methodology } from './components/Methodology'
+import { Phase3Panel } from './components/Phase3Panel'
 import {
   RankedCountyList,
+  defaultCohort,
+  thermalKind,
   type CohortFilter,
 } from './components/RankedCountyList'
 import { SiteDossierPanel } from './components/SiteDossierPanel'
+import {
+  WATCH_CAP,
+  buildDigest,
+  emptyStore,
+  getPublishId,
+  loadStore,
+  saveStore,
+  toggleWatch,
+  type Phase3Store,
+} from './lib/phase3'
 import {
   buildAoiDossier,
   countiesIntersectingAoi,
@@ -17,6 +35,7 @@ import {
   type AoiCountyContext,
   type AoiDossier,
   type CountyFeatureLike,
+  type CountyScreeningLookup,
   type LonLat,
 } from './lib/aoiEval'
 import {
@@ -34,11 +53,7 @@ import {
 } from './lib/siteEval'
 
 interface ProspectsPayload {
-  meta: {
-    methodologyVersion: string
-    disclaimer: string
-    weights: { thermal: number; infra: number }
-  }
+  meta: ScreeningMeta
   counties: ScreeningCounty[]
 }
 
@@ -77,6 +92,17 @@ export default function App() {
   const [ignoreFips, setIgnoreFips] = useState<Set<string>>(() => new Set())
   const [compareSlots, setCompareSlots] = useState<CompareSlot[]>([])
   const [compareHint, setCompareHint] = useState<string | null>(null)
+  const [mapLayers, setMapLayers] = useState<LayerToggles>(DEFAULT_LAYER_TOGGLES)
+  const [leftRailCollapsed, setLeftRailCollapsed] = useState(false)
+  const [rankedListOpen, setRankedListOpen] = useState(true)
+  const [phase3Open, setPhase3Open] = useState(false)
+  const [phase3Store, setPhase3Store] = useState<Phase3Store>(() => emptyStore())
+  const [phase3HasUpdate, setPhase3HasUpdate] = useState(false)
+  const [watchHint, setWatchHint] = useState<string | null>(null)
+
+  useEffect(() => {
+    setPhase3Store(loadStore())
+  }, [])
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL
@@ -87,12 +113,26 @@ export default function App() {
       })
       .then((prospects: ProspectsPayload) => {
         setPayload(prospects)
+        setCohort(defaultCohort(prospects.counties))
+        const firstTdepth = prospects.counties.find((c) => thermalKind(c) === 'tdepth')
         const firstGradient = prospects.counties.find((c) => {
           const t = c.factors.find((f) => f.id === 'thermal')
           return t?.metric === 'gradient_C_per_km' && t.rawValue != null
         })
-        const pick = firstGradient ?? prospects.counties[0]
+        const pick = firstTdepth ?? firstGradient ?? prospects.counties[0]
         if (pick) setSelectedFips(pick.countyFips)
+
+        // Quiet digest for Tools badge — no UI panel forced open.
+        const store = loadStore()
+        const digest = buildDigest({
+          currentPublishId: getPublishId(prospects.meta),
+          methodologyVersion: prospects.meta.methodologyVersion,
+          counties: prospects.counties,
+          store,
+        })
+        setPhase3HasUpdate(
+          digest.status === 'county_deltas' && store.watchlist.length > 0,
+        )
       })
       .catch((e: Error) => setError(e.message))
 
@@ -114,10 +154,7 @@ export default function App() {
   }, [])
 
   const countiesByFips = useMemo(() => {
-    const m = new Map<
-      string,
-      { name: string; rank: number; screeningScore: number; thermalMetric: string | null }
-    >()
+    const m = new Map<string, CountyScreeningLookup>()
     if (!payload) return m
     for (const c of payload.counties) {
       const metric = c.factors.find((f) => f.id === 'thermal')?.metric ?? null
@@ -126,6 +163,10 @@ export default function App() {
         rank: c.rank,
         screeningScore: c.screeningScore,
         thermalMetric: metric ?? null,
+        modelThermal: c.modelThermal,
+        thermalMode: c.thermalMode ?? payload.meta.thermalMode ?? null,
+        tdepthMean: c.tdepthMean ?? null,
+        tdepthKm: c.tdepthKm ?? null,
       })
     }
     return m
@@ -156,6 +197,14 @@ export default function App() {
     [payload, selectedFips],
   )
 
+  /** Cohort FIPS for map dimming — null when cohort is "all" (no dim). */
+  const cohortVisibleFips = useMemo(() => {
+    if (!payload || cohort === 'all') return null
+    return payload.counties
+      .filter((c) => thermalKind(c) === cohort)
+      .map((c) => c.countyFips)
+  }, [payload, cohort])
+
   const clearAoiState = () => {
     setAoiDraft([])
     setAoiRing(null)
@@ -175,6 +224,7 @@ export default function App() {
       clearAoiState()
       return
     }
+    setPhase3Open(false)
     setEvidenceMode(mode)
     if (mode === 'point') {
       clearAoiState()
@@ -190,9 +240,37 @@ export default function App() {
     setEvidenceMode('county')
     clearPointState()
     clearAoiState()
+    setPhase3Open(false)
     setSelectedFips(county.countyFips)
     setQuery(county.name)
   }
+
+  const openPhase3 = () => {
+    setEvidenceMode('county')
+    clearPointState()
+    clearAoiState()
+    setPhase3Open(true)
+  }
+
+  const onToggleWatchSelected = () => {
+    if (!selectedFips) return
+    const { store: next, error: err } = toggleWatch(selectedFips, phase3Store)
+    if (err) {
+      setWatchHint(err)
+      return
+    }
+    saveStore(next)
+    setPhase3Store(next)
+    setWatchHint(null)
+  }
+
+  const watchedSelected = selectedFips
+    ? phase3Store.watchlist.includes(selectedFips)
+    : false
+  const watchDisabledReason =
+    !watchedSelected && phase3Store.watchlist.length >= WATCH_CAP
+      ? `Watchlist full (<=${WATCH_CAP})`
+      : watchHint
 
   const finishAoi = useCallback(
     (ring: LonLat[], counties: AoiCountyContext[]) => {
@@ -329,13 +407,29 @@ export default function App() {
 
   const compareFull = compareSlots.length >= MAX_COMPARE
 
+  const dataDepthStatus = payload?.meta.dataDepthStatus ?? ''
+  const dataDepthAcceptedOrLive =
+    /accepted/i.test(dataDepthStatus) ||
+    (/live/i.test(dataDepthStatus) &&
+      !/risk_pending|pending|partial/i.test(dataDepthStatus))
+  const showResidualBanner =
+    Boolean(payload?.meta.dataDepth) &&
+    !dataDepthAcceptedOrLive &&
+    (dataDepthStatus === 'thermal_spine_live_risk_pending' ||
+      /risk_pending|pending|partial/i.test(dataDepthStatus))
+  const showDataNotes =
+    Boolean(payload?.meta.dataDepth || payload?.meta.residualRisk) &&
+    !showResidualBanner
+  const showCompare =
+    compareSlots.length > 0 || Boolean(compareHint)
+
   if (view === 'methodology') {
     return (
       <div className="app-shell">
         <header className="app-header">
           <div>
-            <h1>Texas Next-Gen County Screening</h1>
-            <p className="disclaimer">Methodology</p>
+            <h1>Texas Next-Gen Screening</h1>
+            <p className="header-tagline muted">Methodology</p>
           </div>
           <button type="button" className="linkish" onClick={() => setView('explorer')}>
             ← Back to Explorer
@@ -347,36 +441,24 @@ export default function App() {
   }
 
   const evidenceActive = evidenceMode !== 'county'
+  const toolsSummary =
+    evidenceMode === 'point'
+      ? 'Tools · Point'
+      : evidenceMode === 'aoi'
+        ? 'Tools · AOI'
+        : phase3Open
+          ? 'Tools · Watchlist'
+          : phase3HasUpdate
+            ? 'Tools · updates'
+            : 'Tools'
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
-          <h1>Texas Next-Gen Geothermal Screening</h1>
-          <p className="disclaimer">
-            {payload?.meta.disclaimer ??
-              'Regional screening index — not a resource map.'}
-          </p>
+        <div className="header-brand">
+          <h1>Texas Next-Gen Screening</h1>
         </div>
         <div className="header-actions">
-          <button
-            type="button"
-            className={evidenceMode === 'point' ? 'linkish active-toggle' : 'linkish'}
-            disabled={Boolean(siteError)}
-            title={siteError ?? 'Point evidence check'}
-            onClick={() => enterMode('point')}
-          >
-            {evidenceMode === 'point' ? 'Point check: ON' : 'Point check'}
-          </button>
-          <button
-            type="button"
-            className={evidenceMode === 'aoi' ? 'linkish active-toggle' : 'linkish'}
-            disabled={Boolean(siteError)}
-            title={siteError ?? 'AOI evidence check'}
-            onClick={() => enterMode('aoi')}
-          >
-            {evidenceMode === 'aoi' ? 'AOI check: ON' : 'AOI check'}
-          </button>
           {evidenceMode === 'county' && (
             <div className="search">
               <input
@@ -401,9 +483,59 @@ export default function App() {
               )}
             </div>
           )}
-          <button type="button" className="linkish" onClick={() => setView('methodology')}>
-            Methodology
-          </button>
+          <details className="header-tools">
+            <summary className="header-tools-summary">{toolsSummary}</summary>
+            <div className="header-tools-menu" role="group" aria-label="Explorer tools">
+              <button
+                type="button"
+                className={evidenceMode === 'point' ? 'tools-item active-toggle' : 'tools-item'}
+                disabled={Boolean(siteError)}
+                title={siteError ?? 'Point evidence check'}
+                onClick={() => enterMode('point')}
+              >
+                {evidenceMode === 'point' ? 'Point check: ON' : 'Point check'}
+              </button>
+              <button
+                type="button"
+                className={evidenceMode === 'aoi' ? 'tools-item active-toggle' : 'tools-item'}
+                disabled={Boolean(siteError)}
+                title={siteError ?? 'AOI evidence check'}
+                onClick={() => enterMode('aoi')}
+              >
+                {evidenceMode === 'aoi' ? 'AOI check: ON' : 'AOI check'}
+              </button>
+              <button
+                type="button"
+                className={phase3Open ? 'tools-item active-toggle' : 'tools-item'}
+                onClick={() => (phase3Open ? setPhase3Open(false) : openPhase3())}
+              >
+                Watchlist / updates
+                {phase3HasUpdate && !phase3Open ? (
+                  <span className="tools-update-dot" aria-label="Updates available">
+                    {' '}
+                    ·
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                className="tools-item"
+                onClick={() => setView('methodology')}
+              >
+                About / Methodology
+              </button>
+              {showDataNotes && (
+                <button
+                  type="button"
+                  className="tools-item tools-item-quiet"
+                  title="Data Depth notes and residual risk"
+                  onClick={() => setView('methodology')}
+                >
+                  Data notes
+                </button>
+              )}
+            </div>
+          </details>
         </div>
       </header>
 
@@ -412,46 +544,81 @@ export default function App() {
         <div className="banner">County screening available. {siteError}</div>
       )}
       {!payload && !error && <div className="banner">Loading…</div>}
+      {showResidualBanner && payload && (
+        <div className="banner residual-risk" role="status">
+          <strong>
+            Data Depth: thermal spine live — risk layers pending/partial
+          </strong>
+          {payload.meta.residualRisk && (
+            <div className="muted tiny residual-risk-detail">{payload.meta.residualRisk}</div>
+          )}
+        </div>
+      )}
 
       {payload && (
         <>
-          <ComparePanel
-            slots={compareSlots}
-            hint={compareHint}
-            onRemove={(id) => {
-              setCompareSlots((prev) => prev.filter((s) => s.id !== id))
-              setCompareHint(null)
-            }}
-            onClear={() => {
-              setCompareSlots([])
-              setCompareHint(null)
-            }}
-          />
-          <main className={evidenceActive ? 'explorer site-mode' : 'explorer'}>
-            {evidenceMode === 'county' && (
-              <aside className="list-pane">
-                <RankedCountyList
-                  counties={payload.counties}
-                  selectedFips={selectedFips}
-                  onSelect={(fips) => {
-                    setSelectedFips(fips)
-                    clearPointState()
-                    clearAoiState()
-                  }}
-                  cohort={cohort}
-                  onCohortChange={setCohort}
-                  focusFips={focusFips}
-                  ignoreFips={ignoreFips}
-                  onToggleFocus={toggleFocus}
-                  onToggleIgnore={toggleIgnore}
-                  query={query}
-                />
-              </aside>
-            )}
+          {showCompare && (
+            <ComparePanel
+              slots={compareSlots}
+              hint={compareHint}
+              onRemove={(id) => {
+                setCompareSlots((prev) => prev.filter((s) => s.id !== id))
+                setCompareHint(null)
+              }}
+              onClear={() => {
+                setCompareSlots([])
+                setCompareHint(null)
+              }}
+            />
+          )}
+          <main
+            className={[
+              'explorer',
+              evidenceActive ? 'site-mode' : '',
+              leftRailCollapsed ? 'rail-collapsed' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <LeftRail
+              collapsed={leftRailCollapsed}
+              onCollapsedChange={setLeftRailCollapsed}
+              listOpen={rankedListOpen}
+              onListOpenChange={setRankedListOpen}
+              layers={mapLayers}
+              onLayersChange={setMapLayers}
+              evidenceActive={evidenceActive}
+              list={
+                evidenceMode === 'county' ? (
+                  <RankedCountyList
+                    counties={payload.counties}
+                    selectedFips={selectedFips}
+                    onSelect={(fips) => {
+                      setSelectedFips(fips)
+                      clearPointState()
+                      clearAoiState()
+                    }}
+                    cohort={cohort}
+                    onCohortChange={setCohort}
+                    focusFips={focusFips}
+                    ignoreFips={ignoreFips}
+                    onToggleFocus={toggleFocus}
+                    onToggleIgnore={toggleIgnore}
+                    query={query}
+                    dataDepth={
+                      payload.meta.dataDepth === true ||
+                      payload.meta.thermalMode === 'stanford_tdepth'
+                    }
+                  />
+                ) : undefined
+              }
+            />
             <section className="map-pane">
               <MapView
                 selectedFips={selectedFips}
                 evidenceMode={evidenceMode}
+                visibleFips={evidenceMode === 'county' ? cohortVisibleFips : null}
+                layers={mapLayers}
                 siteMarker={
                   evidenceMode === 'point' && dossier
                     ? { lat: dossier.lat, lon: dossier.lon }
@@ -483,6 +650,11 @@ export default function App() {
                       countyRank: evt.countyRank,
                       countyScore: evt.countyScore,
                       countyThermalMetric: metric ?? null,
+                      countyModelThermal: county?.modelThermal,
+                      countyThermalMode:
+                        county?.thermalMode ?? payload.meta.thermalMode ?? null,
+                      countyTdepthMean: county?.tdepthMean ?? null,
+                      countyTdepthKm: county?.tdepthKm ?? null,
                       thermalPoints,
                       infraCells,
                     }),
@@ -494,10 +666,11 @@ export default function App() {
                   const vert: LonLat = [evt.lon, evt.lat]
                   setAoiDraft((prev) => [...prev, vert])
                   if (evt.countyFips) {
+                    const county = payload.counties.find(
+                      (c) => c.countyFips === evt.countyFips,
+                    )
                     const metric =
-                      payload.counties
-                        .find((c) => c.countyFips === evt.countyFips)
-                        ?.factors.find((f) => f.id === 'thermal')?.metric ?? null
+                      county?.factors.find((f) => f.id === 'thermal')?.metric ?? null
                     setDraftCountyHints((prev) => {
                       if (prev.some((h) => h.countyFips === evt.countyFips)) return prev
                       return [
@@ -508,6 +681,11 @@ export default function App() {
                           countyRank: evt.countyRank,
                           countyScore: evt.countyScore,
                           countyThermalMetric: metric,
+                          countyModelThermal: county?.modelThermal,
+                          countyThermalMode:
+                            county?.thermalMode ?? payload.meta.thermalMode ?? null,
+                          countyTdepthMean: county?.tdepthMean ?? null,
+                          countyTdepthKm: county?.tdepthKm ?? null,
                         },
                       ]
                     })
@@ -539,8 +717,38 @@ export default function App() {
                   }
                   compareFull={compareFull}
                 />
+              ) : phase3Open ? (
+                <Phase3Panel
+                  counties={payload.counties}
+                  meta={payload.meta}
+                  store={phase3Store}
+                  onStoreChange={(next) => {
+                    setPhase3Store(next)
+                    const digest = buildDigest({
+                      currentPublishId: getPublishId(payload.meta),
+                      methodologyVersion: payload.meta.methodologyVersion,
+                      counties: payload.counties,
+                      store: next,
+                    })
+                    setPhase3HasUpdate(
+                      digest.status === 'county_deltas' && next.watchlist.length > 0,
+                    )
+                  }}
+                  selectedFips={selectedFips}
+                  onSelectCounty={(fips) => {
+                    setSelectedFips(fips)
+                    const c = payload.counties.find((x) => x.countyFips === fips)
+                    if (c) setQuery(c.name)
+                  }}
+                  onClose={() => setPhase3Open(false)}
+                />
               ) : (
-                <DetailPanel county={selected} />
+                <DetailPanel
+                  county={selected}
+                  watched={watchedSelected}
+                  onToggleWatch={onToggleWatchSelected}
+                  watchDisabledReason={watchDisabledReason}
+                />
               )}
             </aside>
           </main>

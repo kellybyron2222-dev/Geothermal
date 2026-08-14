@@ -1,7 +1,24 @@
 # Product Roadmap
 
 **Thesis:** Actionable geothermal intelligence — not GIS.  
-**Beachhead:** Texas / ERCOT · Next-gen geothermal discovery first.
+**Beachhead:** Texas / ERCOT · Next-gen geothermal discovery first.  
+**Data strategy (authoritative for layers):** [data-strategy-texas-geothermal.md](data-strategy-texas-geothermal.md)  
+**Data Depth judgment:** [reviews/2026-08-14-data-depth-continue/](reviews/2026-08-14-data-depth-continue/) · prior [reviews/2026-08-14-data-depth/](reviews/2026-08-14-data-depth/)
+
+---
+
+## Status snapshot (2026-08-14)
+
+| Phase | Status |
+|-------|--------|
+| **1 — County discovery MVP** | **DONE** (thin thermal: IHFC + HIFLD) |
+| **2 — Site evidence tools** | **DONE** (Point / AOI / Compare / Land context honesty) |
+| **2.5 — Data Depth** | **STOP MET** (spine + TexNet + PAD-US frac>1%; RRC = accepted SMU proxy residual) |
+| **3 — Automated opportunity generation** | **COMPLETE** (local watchlist / digest / rules / export) |
+| **4 — 3D geology** | Deferred |
+| **5 — Reservoir intelligence** | Deferred |
+
+**Mandate:** Do not automate a weak thermal spine. Data Depth STOP cleared with labeled Stanford T@depth, SMU confidence, substations, TexNet, PAD-US Fee GAP1–2 **>1% area**, and a **written buyer-accepted SMU well-density proxy** (not RRC Digital Map). **Phase 3 COMPLETE** — [reviews/2026-08-14-phase3-complete/06-phase3-stop.md](reviews/2026-08-14-phase3-complete/06-phase3-stop.md). See Data Depth stop: [reviews/2026-08-14-data-depth-continue/05-stop-judgment.md](reviews/2026-08-14-data-depth-continue/05-stop-judgment.md).
 
 ---
 
@@ -13,103 +30,141 @@
 - Ship explainable ranked zones + supporting map  
 - Prove trust with transparent heuristics  
 
-### Key features
+### Key features (shipped)
 
-- Precomputed opportunity + confidence scores  
-- Ranked list + hotspot map  
-- Zone detail (factors, drivers, sources)  
-- Methodology page  
-- Stretch: county/place search  
+- Precomputed opportunity + confidence scores (v0.3.1)  
+- Rank-first list + choropleth (cohort quarantine)  
+- County detail (factors, drivers, sources)  
+- Methodology page + county search  
 
-### Dependencies
+### Data used
 
-- Public thermal proxy + RRC wells + ERCOT transmission extract  
-- Locked play + JTBD ([DECISIONS.md](DECISIONS.md))  
-- Scoring v0.1 ([scoring-methodology.md](scoring-methodology.md))  
+- IHFC GHFDB 2024 (gradient preferred / heat-flow fallback)  
+- HIFLD transmission proximity  
+- Census TX counties  
 
-### Success criteria
+### Honest gap
+
+~10 counties clear gradient min-n gate; most of Texas is heat-flow fallback. **Commercially insufficient as a standalone thermal spine.**
+
+### Success criteria (historical)
 
 - User produces focus/ignore shortlist in one session  
 - Can explain ranks without a black box  
-- 3+ target developers give structured feedback  
-- Deliverable in **30–45 days** for solo founder (see scope cuts in [tasks.md](tasks.md))  
-
-### Technical challenges
-
-- BHT quality and bias  
-- Consistent spatial joins / CRS  
-- ERCOT data licensing and refresh  
-- Resisting layer sprawl  
+- Static public demo  
 
 ---
 
-## Phase 2 — Site Evaluation & Parcel Intelligence
+## Phase 2 — Site Evaluation Tools (shipped)
 
 ### Goals
 
-- Move from regional discovery to **site-level diligence support**  
-- Reduce manual data collection for a known AOI  
+- Move from regional discovery to **site / AOI evidence** without inventing a site score  
+- Land-context honesty (ownership not in-app)  
 
-### Key features
+### Key features (shipped)
 
-- Search / draw / upload AOI → structured dossier  
-- Side-by-side comparison of 2–5 sites  
-- Parcel / land context (start narrow: tax parcels or public land layers where available)  
-- Richer infrastructure context (plants, substations detail)  
-- Optional surface constraints (protected lands)  
+- Point evidence check · AOI draw/upload · Compare ≤3 snapshots · Land context citations  
+- Residual SOON polish closed (2026-08-14)  
 
-### Dependencies
+### Explicitly not shipped
 
-- Trusted Phase 1 factor model  
-- Parcel data access/licensing (major)  
-- Stable zone scoring for inheritance into AOIs  
+- Parcel / ownership GIS · interconnection feasibility · resource assessment  
 
-### Success criteria
+See [phase2.md](phase2.md).
 
-- User evaluates a candidate site without building a personal GIS  
-- Comparison changes a go/no-go or priority decision  
-- Dossier export (PDF/markdown) used in internal meetings  
+---
 
-### Technical challenges
+## Phase 2.5 — Data Depth (**STOP MET** — 2026-08-14)
 
-- Parcel coverage inconsistency across Texas counties  
-- On-the-fly spatial aggregation performance  
-- Legal/ToS constraints on land data  
-- Avoiding “cadastre product” distraction from geothermal thesis  
+### Goals
+
+- Make screening **commercially useful** with practitioner-grade thermal + infra/offtake/risk context  
+- Keep explainable heuristics; label model vs measured thermal  
+
+### Posture after STOP
+
+- **Live:** Stanford T@depth @4 km · SMU confidence · HIFLD lines+substations · TexNet caution · PAD-US Fee GAP1–2 **>1% area** · methodology v0.4 · residual UI  
+- **Accepted residual:** D3 well-density = **SMU control proxy** (not RRC Digital Map) until MFT access  
+- **Phase 3:** **COMPLETE** — [reviews/2026-08-14-phase3-complete/06-phase3-stop.md](reviews/2026-08-14-phase3-complete/06-phase3-stop.md)  
+- Authoritative stop: [reviews/2026-08-14-data-depth-continue/05-stop-judgment.md](reviews/2026-08-14-data-depth-continue/05-stop-judgment.md)  
+- Next-step review: [reviews/2026-08-14-build-review-next/00-judgment.md](reviews/2026-08-14-build-review-next/00-judgment.md)
+
+### Build shipped (D1–D6 + M0)
+
+| ID | Dataset / work | Score role |
+|----|----------------|------------|
+| **D1** | Stanford Thermal Earth Model (GDR 1592) — T@depth **4 km** TX county means | Opportunity (labeled **model prior**) |
+| **D2** | SMU/GDR 1704 TX BHT / heat-flow points | **Confidence** densify |
+| **D3** | Well density — **SMU proxy** (RRC Digital Map SOON) | Confidence / O&G co-use context |
+| **D4** | TexNet catalog | Risk caution |
+| **D5** | PAD-US Fee GAP1–2 (>1% area) | Friction gate |
+| **D6** | HIFLD substations (+ lines) | Infra / offtake context |
+| **M0** | Methodology **v0.4** | Live |
+
+### Enhance SOON (post-STOP; not Phase 3 blockers)
+
+| Item | When |
+|------|------|
+| Real RRC Digital Map density (replace SMU proxy) | When MFT/login works |
+| Lund Snee / Zoback stress play factor | After EGS-aware posture is explicit |
+| Point/AOI inherit labeled T@depth spine | **Shipped** (context only; not site score) |
+| BEG OFM306 / finer geology | Only if a buyer asks |
+
+### Defer — with when
+
+| Dataset | When to build later |
+|---------|---------------------|
+| University Lands / GLO adjacency | Post–Phase 3 land workflow (new judgment) |
+| Digitized geopressured fairways | After Gulf Coast play focus |
+| Enverus / IHS BHT | After revenue or partner license |
+| Phase 3 alerts / accounts | **Deferred** — local digest is the Phase 3 alert |
+
+### Reject (still)
+
+- Unlabeled ML suitability as MVP core  
+- DIY statewide BHT→opportunity without QC program  
+- Geology / IDW / basement **in ScreeningScore**  
+- ERCOT CEII · parcel ownership GIS · silent interconnection claims  
+
+### Success / stop criteria — **MET** (see stop judgment)
+
+Phase 3 COMPLETE — scoped local cadence; auth/email/GLO need a new product judgment.
+
 
 ---
 
 ## Phase 3 — Automated Opportunity Generation
 
+**Status:** **COMPLETE** · [phase3.md](phase3.md) · [reviews/2026-08-14-phase3-complete/06-phase3-stop.md](reviews/2026-08-14-phase3-complete/06-phase3-stop.md)
+
 ### Goals
 
-- Proactively surface new/changed opportunities as data updates  
-- Still explainable—automation ≠ black box  
+- Return cadence when published scores/factors move  
+- Explainable rule-based focus candidates  
+- Still not a GIS product; Barnes geology remains a **must-have context overlay** (not a Phase 3 deliverable, not in score)
 
-### Key features
+### Shipped (slice 1 + slice 2)
 
-- Watchlists / alerts when ranks or factors move  
-- Rule-based prospect generation (e.g. “thermal P80 + infra &lt; 15 km + confidence ≥ medium”)  
-- Portfolio of tracked zones/sites  
-- Economics-lite / interconnection context (not full LCOE)  
+| ID | Deliverable |
+|----|-------------|
+| P3-1…P3-5 | publishId · watchlist ≤25 · digest · rules v0 · methodology |
+| P3-6 | Auto-digest on panel open |
+| P3-7 | Unit tests |
+| P3-8 | Export/import JSON (confirm on replace) |
+| P3-9 | Published score pack UX |
+| P3-10 | TexNet badge + stable demote |
+| P3-11 | Docs COMPLETE sync |
 
-### Dependencies
+### Explicitly deferred (not Phase 3)
 
-- Phase 1–2 data pipelines with versioning  
-- User accounts (first time auth may be justified)  
-- Clear alert semantics to avoid noise  
+Accounts · push/email · GLO/parcels · CEII · ML prospects · new map layers · Point/AOI watch pins · economics  
 
-### Success criteria
+### Success criteria — **MET**
 
-- Users return weekly without being pushed a map toy  
-- Generated prospects pass human “not silly” review ≥ 80%  
-- Documented methodology versioning for every alert  
-
-### Technical challenges
-
-- Pipeline reliability and data drift  
-- Alert fatigue  
-- Keeping generation rule-based and auditable  
+- User maintains a watchlist, exports backup, sees versioned digest after refresh  
+- Generated candidates follow frozen rules  
+- No CEII / parcels / geology-in-score  
 
 ---
 
@@ -133,53 +188,18 @@
 - WebGL / viz stack and performance budget  
 - Domain partner for QC  
 
-### Success criteria
-
-- 3D view changes a technical interpretation or confidence call  
-- Not merely “looks cool” demos  
-
-### Technical challenges
-
-- Data gaps outside oilfield corridors  
-- Solo-dev complexity explosion  
-- Browser performance  
-- Commercial data dependency  
-
 ---
 
 ## Phase 5 — Reservoir Intelligence Platform
 
 ### Goals
 
-- Become the decision system for reservoir- and operations-aware geothermal intelligence  
+- Reservoir- and operations-aware geothermal intelligence  
 - Bridge prospecting → development support  
-
-### Key features
-
-- Reservoir property frameworks (still explainable where possible)  
-- Scenario comparison (closed vs open loop assumptions)  
-- Integration with economic evaluation  
-- Operator-grade reporting and portfolio risk views  
-- Careful ML only where it beats heuristics **and** remains explainable  
 
 ### Dependencies
 
-- Phases 1–4 credibility  
-- Partnerships / data licenses  
-- Team beyond solo founder  
-
-### Success criteria
-
-- Used in investment committee or partner diligence packs  
-- Measurable reduction in time-to-shortlist and time-to-dossier  
-- Expansion path beyond Texas justified by revenue/usage  
-
-### Technical challenges
-
-- Physics vs heuristics boundary  
-- Liability and overclaiming  
-- Multi-play, multi-basin ontology  
-- Enterprise sales cycles  
+- Phases 1–4 credibility · partnerships / data licenses · team beyond solo founder  
 
 ---
 
@@ -187,13 +207,14 @@
 
 ```mermaid
 flowchart TD
-  p1[Phase1_DiscoveryMVP]
-  p2[Phase2_SiteAndParcels]
+  p1[Phase1_DiscoveryMVP_DONE]
+  p2[Phase2_SiteEvidence_DONE]
+  p25[Phase2_5_DataDepth_NOW]
   p3[Phase3_AutomatedGeneration]
   p4[Phase4_3DGeology]
   p5[Phase5_ReservoirIntelligence]
-  p1 --> p2 --> p3
-  p2 --> p4 --> p5
+  p1 --> p2 --> p25 --> p3
+  p25 --> p4 --> p5
   p3 --> p5
 ```
 
@@ -203,9 +224,13 @@ flowchart TD
 
 | Temptation | Earliest phase |
 |------------|----------------|
-| Parcels | 2 |
-| AOI upload | 2 |
-| Alerts / accounts | 3 |
+| T@depth + denser BHT | **2.5 (now)** |
+| Stress / EGS play badges | 2.5 SOON |
+| Alerts / accounts | 3 (after 2.5 stop) |
+| GLO / University Lands diligence | 3 |
+| Paid Enverus-class BHT | Post-revenue |
+| Parcels / ownership GIS | Reject default / new judgment only |
+| ERCOT CEII interconnection maps | Reject for public MVP |
 | 3D | 4 |
 | Reservoir / ML platform | 5 |
-| National coverage | After Phase 1 trust (+ revenue signal) |
+| National coverage | After TX trust + revenue signal |
