@@ -31,6 +31,8 @@ interface Props {
   onSelectCounty: (fips: string) => void
   onSiteClick: (evt: SiteClickEvent) => void
   onAoiMapClick: (evt: AoiMapClickEvent) => void
+  /** Close AOI draft when ≥3 vertices (same handler as panel Close / Enter). */
+  onAoiClosePolygon?: () => void
 }
 
 const GEOJSON_URL = `${import.meta.env.BASE_URL}data/prospects.geojson`
@@ -116,18 +118,25 @@ export function MapView({
   onSelectCounty,
   onSiteClick,
   onAoiMapClick,
+  onAoiClosePolygon,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markerRef = useRef<maplibregl.Marker | null>(null)
   const evidenceModeRef = useRef(evidenceMode)
+  const draftVerticesRef = useRef(draftVertices)
+  const aoiRingRef = useRef(aoiRing)
   const onSelectCountyRef = useRef(onSelectCounty)
   const onSiteClickRef = useRef(onSiteClick)
   const onAoiMapClickRef = useRef(onAoiMapClick)
+  const onAoiClosePolygonRef = useRef(onAoiClosePolygon)
   evidenceModeRef.current = evidenceMode
+  draftVerticesRef.current = draftVertices
+  aoiRingRef.current = aoiRing
   onSelectCountyRef.current = onSelectCounty
   onSiteClickRef.current = onSiteClick
   onAoiMapClickRef.current = onAoiMapClick
+  onAoiClosePolygonRef.current = onAoiClosePolygon
 
   const evidenceActive = evidenceMode === 'point' || evidenceMode === 'aoi'
 
@@ -303,6 +312,16 @@ export function MapView({
         if (fips) onSelectCountyRef.current(fips)
       })
 
+      map.on('dblclick', (e) => {
+        if (evidenceModeRef.current !== 'aoi') return
+        if (aoiRingRef.current) return
+        const draft = draftVerticesRef.current
+        // After the two click adds of a dblclick, draft should be current; require ≥3.
+        if (!draft || draft.length < 3) return
+        e.preventDefault()
+        onAoiClosePolygonRef.current?.()
+      })
+
       map.on('mouseenter', 'counties-fill', () => {
         const mode = evidenceModeRef.current
         map.getCanvas().style.cursor =
@@ -328,6 +347,9 @@ export function MapView({
     const map = mapRef.current
     if (!map) return
     map.getCanvas().style.cursor = evidenceActive ? 'crosshair' : ''
+
+    if (evidenceMode === 'aoi') map.doubleClickZoom.disable()
+    else map.doubleClickZoom.enable()
 
     const applyPaint = () => {
       if (!map.getLayer('counties-fill')) return
@@ -362,7 +384,7 @@ export function MapView({
 
     if (map.isStyleLoaded()) applyPaint()
     else map.once('load', applyPaint)
-  }, [evidenceActive])
+  }, [evidenceActive, evidenceMode])
 
   useEffect(() => {
     const map = mapRef.current

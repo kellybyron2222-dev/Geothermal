@@ -27,4 +27,9 @@ export interface ScreeningCounty {
   limitations: string[]
   /** Control-point count for the active thermal metric (from prospects JSON). */
   thermalControlCount?: number
+  /** Dual-panel context only — not in ScreeningScore. */
+  gradientMean?: number | null
+  gradientN?: number
+  heatflowMean?: number | null
+  heatflowN?: number
 }

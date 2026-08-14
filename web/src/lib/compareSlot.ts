@@ -16,9 +16,14 @@ export type CompareSlot = {
   gradientPointCount: number
   heatflowPointCount: number
   transmissionDistKm: number | null
-  countySummary: string
+  /** County name(s) shown inline. */
+  countyNames: string
+  /** Rank / screening digits — shown behind expand only. */
+  countyScreeningDetail: string | null
   /** Demoted land-context honesty — never an ownership score. */
   landSummary: string
+  /** First limitations carried for compare expand (full list preserved). */
+  limitations: string[]
   lat?: number
   lon?: number
   areaKm2?: number
@@ -30,25 +35,39 @@ function uid(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function pointCountySummary(d: SiteDossier): string {
+function pointCountyNames(d: SiteDossier): string {
   if (!d.countyName) return 'No containing scored county'
-  const parts = [`${d.countyName} County`]
-  if (d.countyRank != null) parts.push(`rank #${d.countyRank}`)
-  if (d.countyScore != null) parts.push(`screening ${d.countyScore.toFixed(1)}`)
-  return parts.join(' · ')
+  return `${d.countyName} County`
 }
 
-function aoiCountySummary(d: AoiDossier): string {
+function pointCountyScreening(d: SiteDossier): string | null {
+  if (!d.countyName) return null
+  const bits: string[] = []
+  if (d.countyRank != null) bits.push(`rank #${d.countyRank}`)
+  if (d.countyScore != null) bits.push(`screening ${d.countyScore.toFixed(1)}`)
+  return bits.length ? bits.join(' · ') : null
+}
+
+function aoiCountyNames(d: AoiDossier): string {
   if (!d.intersectingCounties.length) return 'No intersecting scored counties'
   return d.intersectingCounties
     .slice(0, 4)
+    .map((c) => c.countyName)
+    .join('; ')
+}
+
+function aoiCountyScreening(d: AoiDossier): string | null {
+  if (!d.intersectingCounties.length) return null
+  const bits = d.intersectingCounties
+    .slice(0, 4)
     .map((c) => {
-      const bits = [`${c.countyName}`]
-      if (c.countyRank != null) bits.push(`#${c.countyRank}`)
-      if (c.countyScore != null) bits.push(c.countyScore.toFixed(1))
-      return bits.join(' ')
+      const parts = [c.countyName]
+      if (c.countyRank != null) parts.push(`#${c.countyRank}`)
+      if (c.countyScore != null) parts.push(c.countyScore.toFixed(1))
+      return parts.join(' ')
     })
     .join('; ')
+  return bits
 }
 
 function pointLandSummary(d: SiteDossier): string {
@@ -65,6 +84,17 @@ function aoiLandSummary(d: AoiDossier): string {
   return `${names} · ownership not in-app — see CAD/RRC`
 }
 
+function aoiLabel(d: AoiDossier): string {
+  const area = `≈${d.areaKm2.toLocaleString()} km²`
+  const lat = d.centroid.lat.toFixed(3)
+  const lonAbs = Math.abs(d.centroid.lon).toFixed(3)
+  const hemi = d.centroid.lon < 0 ? 'W' : 'E'
+  const centroid = `${lat}°N, ${lonAbs}°${hemi}`
+  const top = d.intersectingCounties[0]?.countyName
+  const countyBit = top ? ` · ${top}` : ''
+  return `AOI · ${area} · ${centroid}${countyBit}`
+}
+
 export function fromSiteDossier(d: SiteDossier): CompareSlot {
   return {
     kind: 'point',
@@ -79,8 +109,10 @@ export function fromSiteDossier(d: SiteDossier): CompareSlot {
     gradientPointCount: d.gradientPointCount,
     heatflowPointCount: d.heatflowPointCount,
     transmissionDistKm: d.transmissionDistKm,
-    countySummary: pointCountySummary(d),
+    countyNames: pointCountyNames(d),
+    countyScreeningDetail: pointCountyScreening(d),
     landSummary: pointLandSummary(d),
+    limitations: [...d.limitations],
     lat: d.lat,
     lon: d.lon,
   }
@@ -90,7 +122,7 @@ export function fromAoiDossier(d: AoiDossier): CompareSlot {
   return {
     kind: 'aoi',
     id: uid('aoi'),
-    label: `AOI · ≈${d.areaKm2.toLocaleString()} km²`,
+    label: aoiLabel(d),
     evidenceVerb: d.evidenceVerb,
     siteConfidence: d.siteConfidence,
     nearbyCount: d.nearbyCount,
@@ -100,8 +132,10 @@ export function fromAoiDossier(d: AoiDossier): CompareSlot {
     gradientPointCount: d.gradientPointCount,
     heatflowPointCount: d.heatflowPointCount,
     transmissionDistKm: d.transmissionDistKm,
-    countySummary: aoiCountySummary(d),
+    countyNames: aoiCountyNames(d),
+    countyScreeningDetail: aoiCountyScreening(d),
     landSummary: aoiLandSummary(d),
+    limitations: [...d.limitations],
     areaKm2: d.areaKm2,
     centroidLat: d.centroid.lat,
     centroidLon: d.centroid.lon,

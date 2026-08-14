@@ -30,6 +30,13 @@ export function SiteDossierPanel({
     dossier.siteConfidence === 'Low' ||
     dossier.nearbyCount <= 1
 
+  const strongCounty =
+    (dossier.countyRank != null && dossier.countyRank <= 30) ||
+    (dossier.countyScore != null && dossier.countyScore >= 70)
+  const weakLocal =
+    dossier.siteConfidence === 'None' || dossier.siteConfidence === 'Low'
+  const countyVsLocalConflict = strongCounty && weakLocal
+
   return (
     <div className="detail-panel">
       <div className="detail-top">
@@ -191,6 +198,12 @@ export function SiteDossierPanel({
         </p>
       ) : (
         <p className="muted">No containing scored county for this click.</p>
+      )}
+      {countyVsLocalConflict && (
+        <p className="warn">
+          Strong county screening vs weak local control — do not inherit county rank as
+          site quality.
+        </p>
       )}
 
       <LandContextSection

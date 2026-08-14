@@ -10,14 +10,16 @@
 ```text
 Phase 1 M0–M6          ← DONE (county screening live)
 Phase 1 honesty harden ← DONE (N1–N5; see docs/reviews/2026-08-13-full-build/)
-Phase 2.1 Point check  ← DONE (stop criteria cleared post-N1–N5)
-Phase 2.2 AOI evidence ← DONE (stop; see docs/reviews/2026-08-13-phase2.2/)
-Phase 2.3 Compare      ← DONE (stop; see docs/reviews/2026-08-13-phase2.3/)
-Phase 2.4 Land context ← DONE (honesty stop; see docs/reviews/2026-08-13-phase2.4/)
+Phase 2.1 Point check  ← DONE
+Phase 2.2 AOI evidence ← DONE (+ SOON closeout)
+Phase 2.3 Compare      ← DONE (+ SOON closeout)
+Phase 2.4 Land context ← DONE (+ SOON closeout)
+Phase 2 residual polish← DONE (see docs/reviews/2026-08-14-phase2-closeout/)
 ```
 
 See [phase2.md](phase2.md).  
-**Phase 2 site-eval track (2.1–2.4):** complete for MVP.  
+**Phase 2 (2.1–2.4 + residuals): COMPLETE for MVP.**  
+**Closeout:** [reviews/2026-08-14-phase2-closeout/](reviews/2026-08-14-phase2-closeout/)  
 **2.4 reviews:** [reviews/2026-08-13-phase2.4/](reviews/2026-08-13-phase2.4/)  
 **2.3 reviews:** [reviews/2026-08-13-phase2.3/](reviews/2026-08-13-phase2.3/)  
 **2.2 reviews:** [reviews/2026-08-13-phase2.2/](reviews/2026-08-13-phase2.2/)
@@ -35,26 +37,23 @@ See [phase2.md](phase2.md).
 | ID | Deliverable | Status |
 |----|-------------|--------|
 | **C1–C5** | Pin ≤3 snapshots, honesty table, no winner, methodology, clear/remove | Done |
-
-**2.3 residual SOON (not a 2.4 gate):** S1–S7 from phase2.3 judgment (limitations row, soft parity, kind labels, etc.).
+| **SOON closeout** | Limitations row, softMeans n≤1, kind labels, AOI labels, anti-rank, county expand | Done |
 
 ### Phase 2.2 (completed — reference)
 
 | ID | Deliverable | Status |
 |----|-------------|--------|
 | **A1–A5** | AOI mode, upload, honesty panel, map quarantine, methodology | Done |
-| **A6** | Softened shared evidence verbs | Done (where touched) |
+| **A6** | Softened shared evidence verbs | Done |
+| **SOON closeout** | Large-AOI smear, means≠score, draw close, upload/probe caveats | Done |
 
-**2.2 residual SOON (not a 2.4 gate):** S1 large-AOI smear · S2 means≠score copy · S3 draw-close · S4 upload caveat · S5 county probe miss.
+### Thermal / county polish (Phase 2 closeout)
 
-### Thermal roadmap (locked)
-
-| Item | Plan |
-|------|------|
-| Geothermal gradient as primary thermal factor | **v0.3 (now)** |
-| Heat flow as fallback when gradient missing | **v0.3 (now)** |
-| DIY BHT→gradient | Not in Phase 1 |
-| Always show both gradient + heat flow in panel | Near-term polish (S7 — enhance-soon, not 2.4 gate) |
+| Item | Status |
+|------|--------|
+| Dual panel gradient + heat-flow context numbers | Done (in score vs context only) |
+| County infra ~km honesty | Done |
+| Point conflict callout (strong county / weak local) | Done |
 
 Do not start M4–M5 until M2 outputs exist.
 

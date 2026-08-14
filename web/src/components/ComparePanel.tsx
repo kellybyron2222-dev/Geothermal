@@ -18,12 +18,50 @@ function fmtKm(v: number | null): string {
   return `${v} km`
 }
 
+/** Soften means when control is thin: None/Low confidence OR n ≤ 1. */
 function softMeans(slot: CompareSlot): boolean {
-  return slot.siteConfidence === 'None' || slot.siteConfidence === 'Low'
+  return (
+    slot.siteConfidence === 'None' ||
+    slot.siteConfidence === 'Low' ||
+    slot.nearbyCount <= 1
+  )
+}
+
+function nSublabel(kind: CompareSlot['kind']): string {
+  return kind === 'point' ? '≤40 km disk' : 'inside AOI'
+}
+
+function nearestSublabel(kind: CompareSlot['kind']): string {
+  return kind === 'point' ? 'to click (≤40 km disk)' : 'to AOI (inside / boundary)'
+}
+
+function LimitationsCell({ limitations }: { limitations: string[] }) {
+  const n = limitations.length
+  if (n === 0) return <span className="muted">—</span>
+  const preview = limitations.slice(0, 2)
+  return (
+    <div className="compare-limitations">
+      <span>
+        {n} limitation{n === 1 ? '' : 's'}
+      </span>
+      <details className="compare-details">
+        <summary className="muted tiny">Show</summary>
+        <ul className="compare-limit-list">
+          {preview.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+          {n > 2 && (
+            <li className="muted tiny">…and {n - 2} more</li>
+          )}
+        </ul>
+      </details>
+    </div>
+  )
 }
 
 export function ComparePanel({ slots, onRemove, onClear, hint }: Props) {
   const empty = slots.length === 0
+  const showNotRankingBanner = slots.length >= 2
 
   return (
     <section className="compare-panel" aria-label="Compare evidence">
@@ -96,15 +134,31 @@ export function ComparePanel({ slots, onRemove, onClear, hint }: Props) {
               <tr>
                 <th scope="row">Points (n)</th>
                 {slots.map((s) => (
-                  <td key={s.id}>{s.nearbyCount}</td>
+                  <td key={s.id}>
+                    {s.nearbyCount}
+                    <div className="muted tiny">{nSublabel(s.kind)}</div>
+                  </td>
                 ))}
               </tr>
               <tr>
                 <th scope="row">Nearest km</th>
                 {slots.map((s) => (
-                  <td key={s.id}>{fmtKm(s.nearestKm)}</td>
+                  <td key={s.id}>
+                    {fmtKm(s.nearestKm)}
+                    <div className="muted tiny">{nearestSublabel(s.kind)}</div>
+                  </td>
                 ))}
               </tr>
+              {showNotRankingBanner && (
+                <tr className="compare-banner-row">
+                  <th scope="row">Means</th>
+                  <td colSpan={slots.length}>
+                    <p className="compare-means-banner muted tiny">
+                      Side-by-side evidence — not a ranking or CompareScore
+                    </p>
+                  </td>
+                </tr>
+              )}
               <tr>
                 <th scope="row">Gradient mean</th>
                 {slots.map((s) => (
@@ -144,8 +198,22 @@ export function ComparePanel({ slots, onRemove, onClear, hint }: Props) {
                 <th scope="row">County context</th>
                 {slots.map((s) => (
                   <td key={s.id}>
-                    <span className="compare-county">{s.countySummary}</span>
+                    <span className="compare-county">{s.countyNames}</span>
+                    {s.countyScreeningDetail && (
+                      <details className="compare-details">
+                        <summary className="muted tiny">rank / screening</summary>
+                        <div className="muted tiny">{s.countyScreeningDetail}</div>
+                      </details>
+                    )}
                     <div className="muted tiny">not a pin score</div>
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th scope="row">Limitations</th>
+                {slots.map((s) => (
+                  <td key={s.id}>
+                    <LimitationsCell limitations={s.limitations} />
                   </td>
                 ))}
               </tr>
@@ -153,7 +221,10 @@ export function ComparePanel({ slots, onRemove, onClear, hint }: Props) {
                 <th scope="row">Land context</th>
                 {slots.map((s) => (
                   <td key={s.id}>
-                    <span className="compare-land">{s.landSummary}</span>
+                    <span className="compare-land">
+                      {s.landSummary}
+                      <span className="muted"> · citations in evidence panel</span>
+                    </span>
                     <div className="muted tiny">ownership / minerals not in-app</div>
                   </td>
                 ))}

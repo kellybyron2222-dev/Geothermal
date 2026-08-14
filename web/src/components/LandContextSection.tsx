@@ -16,7 +16,9 @@ export function LandContextSection({ countyNames, aoiBoundaryCaveat }: Props) {
   return (
     <section className="land-context" aria-label="Land context">
       <h3>Land context</h3>
+      <p className="land-subtitle muted tiny">Not parcel ownership</p>
       <p className="muted tiny">{LAND_CONTEXT_DISCLAIMER}</p>
+      <p className="muted tiny">Research elsewhere — not in-app land coverage.</p>
 
       {countyNames.length > 0 ? (
         <p>
@@ -31,6 +33,7 @@ export function LandContextSection({ countyNames, aoiBoundaryCaveat }: Props) {
         <p className="muted tiny">{AOI_PARCEL_BOUNDARY_CAVEAT}</p>
       )}
 
+      <p className="muted tiny land-external-note">{LAND_CONTEXT_EXTERNAL_NOTE}</p>
       <ul className="land-citations">
         {LAND_CITATIONS.map((c) => (
           <li key={c.id}>
@@ -38,7 +41,6 @@ export function LandContextSection({ countyNames, aoiBoundaryCaveat }: Props) {
               {c.label}
             </a>
             <div className="muted tiny">{c.why}</div>
-            <div className="muted tiny">{LAND_CONTEXT_EXTERNAL_NOTE}</div>
           </li>
         ))}
       </ul>

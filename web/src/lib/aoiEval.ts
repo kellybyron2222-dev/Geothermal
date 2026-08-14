@@ -7,6 +7,19 @@ import {
 
 export type LonLat = [number, number]
 
+/** Area (km²) at/above which unweighted means are treated as regional smear. */
+export const LARGE_AOI_KM2 = 2000
+/** Dense-control companion: large-ish AOI with many inside points. */
+export const LARGE_AOI_DENSE_KM2 = 1000
+export const LARGE_AOI_DENSE_COUNT = 8
+
+export function isLargeAoiSmear(areaKm2: number, nearbyCount: number): boolean {
+  return (
+    areaKm2 >= LARGE_AOI_KM2 ||
+    (nearbyCount >= LARGE_AOI_DENSE_COUNT && areaKm2 >= LARGE_AOI_DENSE_KM2)
+  )
+}
+
 export interface AoiCountyContext {
   countyFips: string
   countyName: string
@@ -35,6 +48,8 @@ export interface AoiDossier {
     grad: number | null
   }>
   intersectingCounties: AoiCountyContext[]
+  /** True when area / density makes means regional smear (force demotion in UI). */
+  largeAoiSmear: boolean
   limitations: string[]
   evidenceVerb:
     | 'Insufficient control'
@@ -370,6 +385,8 @@ export function buildAoiDossier(args: {
     if (transmissionDistKm == null || d < transmissionDistKm) transmissionDistKm = d
   }
 
+  const largeAoiSmear = isLargeAoiSmear(areaKm2, inside.length)
+
   const limitations: string[] = [
     'AOI evidence check only — not an AOI ScreeningScore, resource assessment, or drill recommendation.',
     'Drawn/uploaded AOI is not a verified parcel boundary.',
@@ -382,6 +399,12 @@ export function buildAoiDossier(args: {
     limitations.unshift('Insufficient local thermal control — no IHFC points inside the AOI.')
   } else if (inside.length === 1) {
     limitations.unshift('Only one IHFC control point inside the AOI — treat means as indicative only.')
+  }
+
+  if (largeAoiSmear) {
+    limitations.unshift(
+      'Large AOI — unweighted means are regional smear, not an AOI grade.',
+    )
   }
 
   if (withGrad.length === 0 && withQ.length > 0) {
@@ -420,6 +443,7 @@ export function buildAoiDossier(args: {
       grad: p.grad,
     })),
     intersectingCounties: args.intersectingCounties,
+    largeAoiSmear,
     limitations,
     evidenceVerb: evidenceVerb(conf),
   }

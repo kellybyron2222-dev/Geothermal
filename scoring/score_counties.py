@@ -212,6 +212,17 @@ def build() -> None:
             "areaKm2": round(float(row["area_km2"]), 1) if pd.notna(row["area_km2"]) else None,
             "thermalControlCount": int(row["well_count"]) if pd.notna(row["well_count"]) else 0,
         }
+        # Dual panel context only — not used in ScreeningScore formula.
+        if "gradient_mean" in df.columns:
+            gm = row.get("gradient_mean")
+            gn = row.get("gradient_n")
+            rec["gradientMean"] = None if pd.isna(gm) else round(float(gm), 2)
+            rec["gradientN"] = 0 if pd.isna(gn) else int(gn)
+        if "heatflow_mean" in df.columns:
+            hm = row.get("heatflow_mean")
+            hn = row.get("heatflow_n")
+            rec["heatflowMean"] = None if pd.isna(hm) else round(float(hm), 2)
+            rec["heatflowN"] = 0 if pd.isna(hn) else int(hn)
         records.append(rec)
 
     meta = {

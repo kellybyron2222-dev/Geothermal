@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ScreeningCounty } from './types/screening'
 import { AoiEvidencePanel } from './components/AoiEvidencePanel'
 import { ComparePanel } from './components/ComparePanel'
@@ -194,28 +194,53 @@ export default function App() {
     setQuery(county.name)
   }
 
-  const finishAoi = (ring: LonLat[], counties: AoiCountyContext[]) => {
-    const closed = closeRing(ring)
-    setAoiRing(closed)
-    setAoiDraft([])
-    setAoiDossier(
-      buildAoiDossier({
-        ring: closed,
-        thermalPoints,
-        infraCells,
-        intersectingCounties: counties,
-      }),
-    )
-  }
+  const finishAoi = useCallback(
+    (ring: LonLat[], counties: AoiCountyContext[]) => {
+      const closed = closeRing(ring)
+      setAoiRing(closed)
+      setAoiDraft([])
+      setAoiDossier(
+        buildAoiDossier({
+          ring: closed,
+          thermalPoints,
+          infraCells,
+          intersectingCounties: counties,
+        }),
+      )
+    },
+    [thermalPoints, infraCells],
+  )
 
-  const onClosePolygon = () => {
-    if (aoiDraft.length < 3) return
+  const aoiDraftRef = useRef(aoiDraft)
+  const draftCountyHintsRef = useRef(draftCountyHints)
+  aoiDraftRef.current = aoiDraft
+  draftCountyHintsRef.current = draftCountyHints
+
+  const onClosePolygon = useCallback(() => {
+    const draft = aoiDraftRef.current
+    if (draft.length < 3) return
     const unique = new Map<string, AoiCountyContext>()
-    for (const h of draftCountyHints) {
+    for (const h of draftCountyHintsRef.current) {
       if (!unique.has(h.countyFips)) unique.set(h.countyFips, h)
     }
-    finishAoi(aoiDraft, [...unique.values()].slice(0, 8))
-  }
+    finishAoi(draft, [...unique.values()].slice(0, 8))
+  }, [finishAoi])
+
+  useEffect(() => {
+    if (evidenceMode !== 'aoi' || aoiRing) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+        return
+      }
+      if (aoiDraftRef.current.length < 3) return
+      e.preventDefault()
+      onClosePolygon()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [evidenceMode, aoiRing, onClosePolygon])
 
   const onUploadText = async (text: string) => {
     const parsed = parseAoiGeoJson(text)
@@ -488,6 +513,7 @@ export default function App() {
                     })
                   }
                 }}
+                onAoiClosePolygon={onClosePolygon}
               />
             </section>
             <aside className="detail-pane">

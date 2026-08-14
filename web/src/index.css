@@ -656,9 +656,20 @@ input {
 
 .factor-grid {
   display: grid;
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: 7.5rem 1fr;
   gap: 0.2rem 0.5rem;
   font-size: 0.9rem;
+}
+
+.thermal-companion {
+  margin: 0.45rem 0 0.35rem;
+  padding: 0.35rem 0.45rem;
+  border-left: 2px solid var(--line);
+}
+
+.thermal-companion-title {
+  font-weight: 600;
+  margin-bottom: 0.15rem;
 }
 
 .muted {
@@ -711,6 +722,15 @@ input {
   font-weight: 600;
   font-size: 0.95rem;
   color: var(--muted);
+  margin-bottom: 0.15rem;
+}
+
+.land-subtitle {
+  margin: 0 0 0.35rem;
+}
+
+.land-external-note {
+  margin: 0.55rem 0 0.2rem;
 }
 
 .land-citations {
@@ -875,6 +895,30 @@ input {
 .compare-county {
   display: block;
   line-height: 1.35;
+}
+
+.compare-details {
+  margin-top: 0.2rem;
+}
+
+.compare-details summary {
+  cursor: pointer;
+}
+
+.compare-limit-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+}
+
+.compare-means-banner {
+  margin: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.compare-banner-row td {
+  background: #f7f6f2;
 }
 
 .compare-demoted td,

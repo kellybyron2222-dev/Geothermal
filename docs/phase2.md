@@ -1,8 +1,7 @@
 # Phase 2 — Site Evaluation
 
-**Status:** Phase 2.4 **DONE** (land-context honesty stopped) · Phase 2 site-eval track **complete for MVP**  
-**Depends on:** Phase 1 county screening (shipped) · Phase 2.1–2.3 honesty stops  
-**Reviews:** [reviews/2026-08-13-phase2.4/](reviews/2026-08-13-phase2.4/) · prior [phase2.3/](reviews/2026-08-13-phase2.3/)
+**Status:** Phase 2 **COMPLETE for MVP** (2.1–2.4 + residual SOON closeout)  
+**Closeout:** [reviews/2026-08-14-phase2-closeout/](reviews/2026-08-14-phase2-closeout/) · prior [phase2.4/](reviews/2026-08-13-phase2.4/)
 
 ---
 

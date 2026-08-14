@@ -2,6 +2,9 @@ import { useRef } from 'react'
 import type { AoiDossier } from '../lib/aoiEval'
 import { LandContextSection } from './LandContextSection'
 
+const UPLOAD_CAVEAT = 'Upload: WGS84 lon/lat, single Polygon, outer ring only.'
+const MEANS_NOT_SCORE = 'mean of IHFC points inside — not an AOI score'
+
 interface Props {
   dossier: AoiDossier | null
   draftCount: number
@@ -11,6 +14,31 @@ interface Props {
   uploadError: string | null
   onAddToCompare?: () => void
   compareFull?: boolean
+}
+
+function MeansRow({ dossier, weakened }: { dossier: AoiDossier; weakened?: boolean }) {
+  return (
+    <div className={`score-row${weakened ? ' weakened' : ''}`}>
+      <div>
+        <div className="label">Gradient mean (n={dossier.gradientPointCount})</div>
+        <div className="big">
+          {dossier.localGradientMean == null
+            ? '—'
+            : `${dossier.localGradientMean.toFixed(1)}`}
+        </div>
+        <div className="muted tiny">°C/km · {MEANS_NOT_SCORE}</div>
+      </div>
+      <div>
+        <div className="label">Heat-flow mean (n={dossier.heatflowPointCount})</div>
+        <div className="big">
+          {dossier.localHeatflowMean == null
+            ? '—'
+            : `${dossier.localHeatflowMean.toFixed(1)}`}
+        </div>
+        <div className="muted tiny">mW/m² · {MEANS_NOT_SCORE}</div>
+      </div>
+    </div>
+  )
 }
 
 export function AoiEvidencePanel({
@@ -37,8 +65,9 @@ export function AoiEvidencePanel({
       <div className="detail-panel empty">
         <h2>AOI evidence check</h2>
         <p>
-          Click the map to add vertices (≥3), then <strong>Close polygon</strong>, or
-          upload a single Polygon GeoJSON — not an AOI score.
+          Click the map to add vertices (≥3), then <strong>Close polygon</strong>,{' '}
+          <strong>Enter</strong>, or <strong>double-click</strong> the map — or upload a
+          single Polygon GeoJSON. Not an AOI score.
         </p>
         <div className="aoi-controls">
           <button
@@ -62,10 +91,16 @@ export function AoiEvidencePanel({
             />
           </label>
         </div>
+        <p className="muted tiny">{UPLOAD_CAVEAT}</p>
         {draftCount > 0 && draftCount < 3 && (
           <p className="muted tiny aoi-draft-hint">
             {draftCount} vertex{draftCount === 1 ? '' : 'es'} — need {3 - draftCount} more to
             close.
+          </p>
+        )}
+        {draftCount >= 3 && (
+          <p className="muted tiny aoi-draft-hint">
+            {draftCount} vertices — Close polygon, Enter, or double-click to finish.
           </p>
         )}
         {uploadError && <p className="warn">{uploadError}</p>}
@@ -77,6 +112,7 @@ export function AoiEvidencePanel({
     dossier.siteConfidence === 'None' ||
     dossier.siteConfidence === 'Low' ||
     dossier.nearbyCount <= 1
+  const collapseMeans = weak || dossier.largeAoiSmear
 
   return (
     <div className="detail-panel">
@@ -119,6 +155,7 @@ export function AoiEvidencePanel({
           />
         </label>
       </div>
+      <p className="muted tiny">{UPLOAD_CAVEAT}</p>
       {uploadError && <p className="warn">{uploadError}</p>}
 
       <div
@@ -151,58 +188,32 @@ export function AoiEvidencePanel({
           Insufficient local thermal control — do not treat this AOI as thermally supported.
         </p>
       )}
+      {dossier.largeAoiSmear && (
+        <p className="warn">
+          Large AOI — unweighted means are regional smear, not an AOI grade.
+        </p>
+      )}
 
-      {weak ? (
+      {collapseMeans ? (
         <details className="weak-means">
-          <summary>Show local means (weak control)</summary>
+          <summary>
+            {dossier.largeAoiSmear && !weak
+              ? 'Show local means (large AOI — regional smear)'
+              : 'Show local means (weak control)'}
+          </summary>
           <p className="muted tiny">
-            Control quality above is the lead signal — means are secondary when n≤1 or
-            confidence is None/Low.
+            {dossier.largeAoiSmear
+              ? 'Large AOI — unweighted means are regional smear, not an AOI grade.'
+              : 'Control quality above is the lead signal — means are secondary when n≤1 or confidence is None/Low.'}{' '}
+            Always: {MEANS_NOT_SCORE}.
           </p>
-          <div className="score-row weakened">
-            <div>
-              <div className="label">Gradient mean (n={dossier.gradientPointCount})</div>
-              <div className="big">
-                {dossier.localGradientMean == null
-                  ? '—'
-                  : `${dossier.localGradientMean.toFixed(1)}`}
-              </div>
-              <div className="muted tiny">°C/km · points inside AOI</div>
-            </div>
-            <div>
-              <div className="label">Heat-flow mean (n={dossier.heatflowPointCount})</div>
-              <div className="big">
-                {dossier.localHeatflowMean == null
-                  ? '—'
-                  : `${dossier.localHeatflowMean.toFixed(1)}`}
-              </div>
-              <div className="muted tiny">mW/m² · points inside AOI</div>
-            </div>
-          </div>
+          <MeansRow dossier={dossier} weakened />
         </details>
       ) : (
         <>
           <h3>Local thermal means</h3>
-          <div className="score-row">
-            <div>
-              <div className="label">Gradient mean (n={dossier.gradientPointCount})</div>
-              <div className="big">
-                {dossier.localGradientMean == null
-                  ? '—'
-                  : `${dossier.localGradientMean.toFixed(1)}`}
-              </div>
-              <div className="muted tiny">°C/km · points inside AOI</div>
-            </div>
-            <div>
-              <div className="label">Heat-flow mean (n={dossier.heatflowPointCount})</div>
-              <div className="big">
-                {dossier.localHeatflowMean == null
-                  ? '—'
-                  : `${dossier.localHeatflowMean.toFixed(1)}`}
-              </div>
-              <div className="muted tiny">mW/m² · points inside AOI</div>
-            </div>
-          </div>
+          <p className="muted tiny">{MEANS_NOT_SCORE}</p>
+          <MeansRow dossier={dossier} />
         </>
       )}
 
@@ -247,6 +258,9 @@ export function AoiEvidencePanel({
       ) : (
         <p className="muted">No intersecting scored counties detected for this AOI.</p>
       )}
+      <p className="muted tiny">
+        County list is probe-based (vertices + centroid) — may miss edge-only counties.
+      </p>
 
       <LandContextSection
         countyNames={dossier.intersectingCounties.map((c) => c.countyName)}

@@ -98,19 +98,23 @@ export function Methodology({ meta }: { meta: Meta | null }) {
         <li>
           Pin up to <strong>3</strong> Point and/or AOI evidence snapshots into a side-by-side
           table of the same honesty-hierarchy fields (control, confidence, means, transmission
-          ~km, county context, demoted land context).
+          ~km, county names, limitations, demoted land context).
         </li>
         <li>
           Compare shows <strong>pinned evidence fields only</strong> — not a site score, not a
-          ranking, and there is no CompareScore or winner column.
+          ranking, and there is no CompareScore or winner column. With two or more pins, a banner
+          near means restates that cue.
         </li>
         <li>
-          County ScreeningScore / rank in compare cells remains demoted context (not a pin
-          quality score).
+          Means cells soften when confidence is None/Low or nearby count ≤ 1. Point vs AOI use
+          kind-aware n / nearest sublabels (≤40 km disk vs inside AOI).
         </li>
         <li>
-          Land context in compare repeats ownership-not-in-app honesty (county name + CAD/RRC
-          cue) — never an ownership ladder or land score.
+          County ScreeningScore / rank stay behind expand; visible names are demoted context only.
+        </li>
+        <li>
+          Land context in compare repeats ownership-not-in-app honesty and points to citations in
+          the evidence panel — never an ownership ladder or land score.
         </li>
       </ul>
 
@@ -118,16 +122,18 @@ export function Methodology({ meta }: { meta: Meta | null }) {
       <ul>
         <li>
           Land context is <strong>honesty + outbound research pointers</strong>, not parcel GIS
-          and not ownership certainty.
+          and not ownership certainty. Subtitle: not parcel ownership.
         </li>
         <li>
           Parcel ownership, title, and mineral estate are <strong>out of scope</strong> — this
-          product does not resolve owners, parcel IDs, or land scores.
+          product does not resolve owners, parcel IDs, or land scores. Research elsewhere — not
+          in-app land coverage.
         </li>
         <li>
           Static citations only: Texas Comptroller CAD / county directory (surface ownership
           research start), Railroad Commission public datasets (mineral-context pointer, not
-          mineral ownership), and optional Texas GLO overview. No scrape, no live CAD API.
+          mineral ownership), and optional Texas GLO overview. One external-records note sits
+          above the list. No scrape, no live CAD API.
         </li>
         <li>
           Drawn/uploaded AOI polygons are user-supplied boundaries — not verified parcels.
@@ -135,6 +141,18 @@ export function Methodology({ meta }: { meta: Meta | null }) {
         <li>
           Land context does <strong>not</strong> enter ScreeningScore and does not create a
           site / AOI / Compare land score.
+        </li>
+      </ul>
+
+      <h3>County dual thermal panel</h3>
+      <ul>
+        <li>
+          DetailPanel may show both county gradient and heat-flow means as <em>panel context</em>.
+          Only the active metric (gradient preferred with min-n gate, else heat-flow fallback)
+          enters ScreeningScore — the companion is labeled context only.
+        </li>
+        <li>
+          Transmission raw display uses ~km and states grid proximity proxy — not interconnection.
         </li>
       </ul>
 
