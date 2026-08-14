@@ -118,6 +118,7 @@ export function buildSiteDossier(args: {
 
   const limitations: string[] = [
     'Point evidence check only — not a site resource assessment or drill recommendation.',
+    'Ownership, title, and mineral estate are not resolved in this app.',
     'Transmission distance is nearest cell on a ~0.15° (~15 km) HIFLD proximity grid — not survey-grade and not interconnection feasibility.',
     `Thermal “local” means use an unweighted disk of radius ${radiusKm} km — regional smear, not pad-level geology.`,
   ]

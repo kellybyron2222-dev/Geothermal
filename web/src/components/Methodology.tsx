@@ -93,12 +93,58 @@ export function Methodology({ meta }: { meta: Meta | null }) {
         </li>
       </ul>
 
+      <h3>Compare evidence (Phase 2.3)</h3>
+      <ul>
+        <li>
+          Pin up to <strong>3</strong> Point and/or AOI evidence snapshots into a side-by-side
+          table of the same honesty-hierarchy fields (control, confidence, means, transmission
+          ~km, county context, demoted land context).
+        </li>
+        <li>
+          Compare shows <strong>pinned evidence fields only</strong> — not a site score, not a
+          ranking, and there is no CompareScore or winner column.
+        </li>
+        <li>
+          County ScreeningScore / rank in compare cells remains demoted context (not a pin
+          quality score).
+        </li>
+        <li>
+          Land context in compare repeats ownership-not-in-app honesty (county name + CAD/RRC
+          cue) — never an ownership ladder or land score.
+        </li>
+      </ul>
+
+      <h3>Land context (Phase 2.4)</h3>
+      <ul>
+        <li>
+          Land context is <strong>honesty + outbound research pointers</strong>, not parcel GIS
+          and not ownership certainty.
+        </li>
+        <li>
+          Parcel ownership, title, and mineral estate are <strong>out of scope</strong> — this
+          product does not resolve owners, parcel IDs, or land scores.
+        </li>
+        <li>
+          Static citations only: Texas Comptroller CAD / county directory (surface ownership
+          research start), Railroad Commission public datasets (mineral-context pointer, not
+          mineral ownership), and optional Texas GLO overview. No scrape, no live CAD API.
+        </li>
+        <li>
+          Drawn/uploaded AOI polygons are user-supplied boundaries — not verified parcels.
+        </li>
+        <li>
+          Land context does <strong>not</strong> enter ScreeningScore and does not create a
+          site / AOI / Compare land score.
+        </li>
+      </ul>
+
       <h3>What this is not</h3>
       <ul>
         <li>Not a geothermal resource assessment</li>
         <li>Not temperature-at-depth or reservoir quality</li>
         <li>Not a drill target or lease recommendation</li>
         <li>Not ERCOT interconnection analysis</li>
+        <li>Not parcel ownership, title, or mineral-estate resolution</li>
       </ul>
 
       <p className="muted">

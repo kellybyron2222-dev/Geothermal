@@ -372,6 +372,8 @@ export function buildAoiDossier(args: {
 
   const limitations: string[] = [
     'AOI evidence check only — not an AOI ScreeningScore, resource assessment, or drill recommendation.',
+    'Drawn/uploaded AOI is not a verified parcel boundary.',
+    'Ownership, title, and mineral estate are not resolved in this app.',
     'Transmission distance is nearest cell on a ~0.15° (~15 km) HIFLD proximity grid — not survey-grade and not interconnection feasibility.',
     'Thermal control counts IHFC points inside the polygon (point-in-polygon) — regional smear, not pad-level geology.',
   ]

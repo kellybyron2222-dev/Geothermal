@@ -1,11 +1,19 @@
 import type { SiteDossier } from '../lib/siteEval'
+import { LandContextSection } from './LandContextSection'
 
 interface Props {
   dossier: SiteDossier | null
   onClear: () => void
+  onAddToCompare?: () => void
+  compareFull?: boolean
 }
 
-export function SiteDossierPanel({ dossier, onClear }: Props) {
+export function SiteDossierPanel({
+  dossier,
+  onClear,
+  onAddToCompare,
+  compareFull,
+}: Props) {
   if (!dossier) {
     return (
       <div className="detail-panel empty">
@@ -26,9 +34,26 @@ export function SiteDossierPanel({ dossier, onClear }: Props) {
     <div className="detail-panel">
       <div className="detail-top">
         <h2>Point evidence check</h2>
-        <button type="button" className="linkish" onClick={onClear}>
-          Clear
-        </button>
+        <div className="detail-top-actions">
+          {onAddToCompare && (
+            <button
+              type="button"
+              className="linkish"
+              disabled={compareFull}
+              title={
+                compareFull
+                  ? 'Compare is full (3/3) — remove a pin first'
+                  : 'Pin this evidence snapshot to Compare'
+              }
+              onClick={onAddToCompare}
+            >
+              Add to compare
+            </button>
+          )}
+          <button type="button" className="linkish" onClick={onClear}>
+            Clear
+          </button>
+        </div>
       </div>
       <p className="muted">
         {dossier.lat.toFixed(4)}°N, {Math.abs(dossier.lon).toFixed(4)}°W
@@ -167,6 +192,10 @@ export function SiteDossierPanel({ dossier, onClear }: Props) {
       ) : (
         <p className="muted">No containing scored county for this click.</p>
       )}
+
+      <LandContextSection
+        countyNames={dossier.countyName ? [dossier.countyName] : []}
+      />
 
       <h3>Limitations</h3>
       <ul className="limitations">

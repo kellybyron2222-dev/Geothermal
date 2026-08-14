@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { AoiDossier } from '../lib/aoiEval'
+import { LandContextSection } from './LandContextSection'
 
 interface Props {
   dossier: AoiDossier | null
@@ -8,6 +9,8 @@ interface Props {
   onClear: () => void
   onUploadText: (text: string) => void
   uploadError: string | null
+  onAddToCompare?: () => void
+  compareFull?: boolean
 }
 
 export function AoiEvidencePanel({
@@ -17,6 +20,8 @@ export function AoiEvidencePanel({
   onClear,
   onUploadText,
   uploadError,
+  onAddToCompare,
+  compareFull,
 }: Props) {
   const fileRef = useRef<HTMLInputElement | null>(null)
 
@@ -77,9 +82,26 @@ export function AoiEvidencePanel({
     <div className="detail-panel">
       <div className="detail-top">
         <h2>AOI evidence check</h2>
-        <button type="button" className="linkish" onClick={onClear}>
-          Clear
-        </button>
+        <div className="detail-top-actions">
+          {onAddToCompare && (
+            <button
+              type="button"
+              className="linkish"
+              disabled={compareFull}
+              title={
+                compareFull
+                  ? 'Compare is full (3/3) — remove a pin first'
+                  : 'Pin this evidence snapshot to Compare'
+              }
+              onClick={onAddToCompare}
+            >
+              Add to compare
+            </button>
+          )}
+          <button type="button" className="linkish" onClick={onClear}>
+            Clear
+          </button>
+        </div>
       </div>
       <p className="muted tiny">
         Area ≈ {dossier.areaKm2.toLocaleString()} km² · centroid{' '}
@@ -225,6 +247,11 @@ export function AoiEvidencePanel({
       ) : (
         <p className="muted">No intersecting scored counties detected for this AOI.</p>
       )}
+
+      <LandContextSection
+        countyNames={dossier.intersectingCounties.map((c) => c.countyName)}
+        aoiBoundaryCaveat
+      />
 
       <h3>Limitations</h3>
       <ul className="limitations">

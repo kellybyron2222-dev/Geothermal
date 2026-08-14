@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ScreeningCounty } from './types/screening'
 import { AoiEvidencePanel } from './components/AoiEvidencePanel'
+import { ComparePanel } from './components/ComparePanel'
 import { DetailPanel } from './components/DetailPanel'
 import { MapView, type EvidenceMode } from './components/MapView'
 import { Methodology } from './components/Methodology'
@@ -18,6 +19,13 @@ import {
   type CountyFeatureLike,
   type LonLat,
 } from './lib/aoiEval'
+import {
+  fromAoiDossier,
+  fromSiteDossier,
+  isDuplicate,
+  MAX_COMPARE,
+  type CompareSlot,
+} from './lib/compareSlot'
 import {
   buildSiteDossier,
   type InfraCell,
@@ -67,6 +75,8 @@ export default function App() {
   const [cohort, setCohort] = useState<CohortFilter>('gradient')
   const [focusFips, setFocusFips] = useState<Set<string>>(() => new Set())
   const [ignoreFips, setIgnoreFips] = useState<Set<string>>(() => new Set())
+  const [compareSlots, setCompareSlots] = useState<CompareSlot[]>([])
+  const [compareHint, setCompareHint] = useState<string | null>(null)
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL
@@ -264,6 +274,36 @@ export default function App() {
     })
   }
 
+  const addFromPoint = (d: SiteDossier) => {
+    const next = fromSiteDossier(d)
+    if (isDuplicate(compareSlots, next)) {
+      setCompareHint('Already pinned — same point (within ~0.0005°).')
+      return
+    }
+    if (compareSlots.length >= MAX_COMPARE) {
+      setCompareHint(`Compare is full (${MAX_COMPARE}/${MAX_COMPARE}) — remove a pin first.`)
+      return
+    }
+    setCompareSlots((prev) => [...prev, next])
+    setCompareHint(null)
+  }
+
+  const addFromAoi = (d: AoiDossier) => {
+    const next = fromAoiDossier(d)
+    if (isDuplicate(compareSlots, next)) {
+      setCompareHint('Already pinned — same AOI area/centroid.')
+      return
+    }
+    if (compareSlots.length >= MAX_COMPARE) {
+      setCompareHint(`Compare is full (${MAX_COMPARE}/${MAX_COMPARE}) — remove a pin first.`)
+      return
+    }
+    setCompareSlots((prev) => [...prev, next])
+    setCompareHint(null)
+  }
+
+  const compareFull = compareSlots.length >= MAX_COMPARE
+
   if (view === 'methodology') {
     return (
       <div className="app-shell">
@@ -349,106 +389,136 @@ export default function App() {
       {!payload && !error && <div className="banner">Loading…</div>}
 
       {payload && (
-        <main className={evidenceActive ? 'explorer site-mode' : 'explorer'}>
-          {evidenceMode === 'county' && (
-            <aside className="list-pane">
-              <RankedCountyList
-                counties={payload.counties}
+        <>
+          <ComparePanel
+            slots={compareSlots}
+            hint={compareHint}
+            onRemove={(id) => {
+              setCompareSlots((prev) => prev.filter((s) => s.id !== id))
+              setCompareHint(null)
+            }}
+            onClear={() => {
+              setCompareSlots([])
+              setCompareHint(null)
+            }}
+          />
+          <main className={evidenceActive ? 'explorer site-mode' : 'explorer'}>
+            {evidenceMode === 'county' && (
+              <aside className="list-pane">
+                <RankedCountyList
+                  counties={payload.counties}
+                  selectedFips={selectedFips}
+                  onSelect={(fips) => {
+                    setSelectedFips(fips)
+                    clearPointState()
+                    clearAoiState()
+                  }}
+                  cohort={cohort}
+                  onCohortChange={setCohort}
+                  focusFips={focusFips}
+                  ignoreFips={ignoreFips}
+                  onToggleFocus={toggleFocus}
+                  onToggleIgnore={toggleIgnore}
+                  query={query}
+                />
+              </aside>
+            )}
+            <section className="map-pane">
+              <MapView
                 selectedFips={selectedFips}
-                onSelect={(fips) => {
+                evidenceMode={evidenceMode}
+                siteMarker={
+                  evidenceMode === 'point' && dossier
+                    ? { lat: dossier.lat, lon: dossier.lon }
+                    : null
+                }
+                aoiRing={evidenceMode === 'aoi' ? aoiRing : null}
+                draftVertices={
+                  evidenceMode === 'aoi' && !aoiRing && aoiDraft.length > 0
+                    ? aoiDraft
+                    : null
+                }
+                onSelectCounty={(fips) => {
                   setSelectedFips(fips)
                   clearPointState()
                   clearAoiState()
                 }}
-                cohort={cohort}
-                onCohortChange={setCohort}
-                focusFips={focusFips}
-                ignoreFips={ignoreFips}
-                onToggleFocus={toggleFocus}
-                onToggleIgnore={toggleIgnore}
-                query={query}
-              />
-            </aside>
-          )}
-          <section className="map-pane">
-            <MapView
-              selectedFips={selectedFips}
-              evidenceMode={evidenceMode}
-              siteMarker={
-                evidenceMode === 'point' && dossier
-                  ? { lat: dossier.lat, lon: dossier.lon }
-                  : null
-              }
-              aoiRing={evidenceMode === 'aoi' ? aoiRing : null}
-              draftVertices={
-                evidenceMode === 'aoi' && !aoiRing && aoiDraft.length > 0 ? aoiDraft : null
-              }
-              onSelectCounty={(fips) => {
-                setSelectedFips(fips)
-                clearPointState()
-                clearAoiState()
-              }}
-              onSiteClick={(evt) => {
-                const county = payload.counties.find((c) => c.countyFips === evt.countyFips)
-                const metric = county?.factors.find((f) => f.id === 'thermal')?.metric ?? null
-                setDossier(
-                  buildSiteDossier({
-                    lat: evt.lat,
-                    lon: evt.lon,
-                    countyFips: evt.countyFips,
-                    countyName: evt.countyName,
-                    countyRank: evt.countyRank,
-                    countyScore: evt.countyScore,
-                    countyThermalMetric: metric ?? null,
-                    thermalPoints,
-                    infraCells,
-                  }),
-                )
-                if (evt.countyFips) setSelectedFips(evt.countyFips)
-              }}
-              onAoiMapClick={(evt) => {
-                if (aoiRing) return
-                const vert: LonLat = [evt.lon, evt.lat]
-                setAoiDraft((prev) => [...prev, vert])
-                if (evt.countyFips) {
+                onSiteClick={(evt) => {
+                  const county = payload.counties.find(
+                    (c) => c.countyFips === evt.countyFips,
+                  )
                   const metric =
-                    payload.counties
-                      .find((c) => c.countyFips === evt.countyFips)
-                      ?.factors.find((f) => f.id === 'thermal')?.metric ?? null
-                  setDraftCountyHints((prev) => {
-                    if (prev.some((h) => h.countyFips === evt.countyFips)) return prev
-                    return [
-                      ...prev,
-                      {
-                        countyFips: evt.countyFips!,
-                        countyName: evt.countyName ?? evt.countyFips!,
-                        countyRank: evt.countyRank,
-                        countyScore: evt.countyScore,
-                        countyThermalMetric: metric,
-                      },
-                    ]
-                  })
-                }
-              }}
-            />
-          </section>
-          <aside className="detail-pane">
-            {evidenceMode === 'point' ? (
-              <SiteDossierPanel dossier={dossier} onClear={() => setDossier(null)} />
-            ) : evidenceMode === 'aoi' ? (
-              <AoiEvidencePanel
-                dossier={aoiDossier}
-                draftCount={aoiDraft.length}
-                onClosePolygon={onClosePolygon}
-                onClear={clearAoiState}
-                onUploadText={(text) => void onUploadText(text)}
-                uploadError={uploadError}
+                    county?.factors.find((f) => f.id === 'thermal')?.metric ?? null
+                  setDossier(
+                    buildSiteDossier({
+                      lat: evt.lat,
+                      lon: evt.lon,
+                      countyFips: evt.countyFips,
+                      countyName: evt.countyName,
+                      countyRank: evt.countyRank,
+                      countyScore: evt.countyScore,
+                      countyThermalMetric: metric ?? null,
+                      thermalPoints,
+                      infraCells,
+                    }),
+                  )
+                  if (evt.countyFips) setSelectedFips(evt.countyFips)
+                }}
+                onAoiMapClick={(evt) => {
+                  if (aoiRing) return
+                  const vert: LonLat = [evt.lon, evt.lat]
+                  setAoiDraft((prev) => [...prev, vert])
+                  if (evt.countyFips) {
+                    const metric =
+                      payload.counties
+                        .find((c) => c.countyFips === evt.countyFips)
+                        ?.factors.find((f) => f.id === 'thermal')?.metric ?? null
+                    setDraftCountyHints((prev) => {
+                      if (prev.some((h) => h.countyFips === evt.countyFips)) return prev
+                      return [
+                        ...prev,
+                        {
+                          countyFips: evt.countyFips!,
+                          countyName: evt.countyName ?? evt.countyFips!,
+                          countyRank: evt.countyRank,
+                          countyScore: evt.countyScore,
+                          countyThermalMetric: metric,
+                        },
+                      ]
+                    })
+                  }
+                }}
               />
-            ) : (
-              <DetailPanel county={selected} />
-            )}
-          </aside>
-        </main>
+            </section>
+            <aside className="detail-pane">
+              {evidenceMode === 'point' ? (
+                <SiteDossierPanel
+                  dossier={dossier}
+                  onClear={() => setDossier(null)}
+                  onAddToCompare={
+                    dossier ? () => addFromPoint(dossier) : undefined
+                  }
+                  compareFull={compareFull}
+                />
+              ) : evidenceMode === 'aoi' ? (
+                <AoiEvidencePanel
+                  dossier={aoiDossier}
+                  draftCount={aoiDraft.length}
+                  onClosePolygon={onClosePolygon}
+                  onClear={clearAoiState}
+                  onUploadText={(text) => void onUploadText(text)}
+                  uploadError={uploadError}
+                  onAddToCompare={
+                    aoiDossier ? () => addFromAoi(aoiDossier) : undefined
+                  }
+                  compareFull={compareFull}
+                />
+              ) : (
+                <DetailPanel county={selected} />
+              )}
+            </aside>
+          </main>
+        </>
       )}
     </div>
   )

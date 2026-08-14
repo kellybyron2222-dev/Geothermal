@@ -73,3 +73,21 @@ Thermal choice: **IHFC Global Heat Flow Database 2024** (citable, open download)
 1. Do not commit `data/raw/**` (gitignored).  
 2. Prefer HIFLD over ERCOT for Phase 1 public repo.  
 3. One thermal product only — no silent BHT blending.
+
+---
+
+## 5. Land context (Phase 2.4 — research pointers only)
+
+Land context is **not** a dataset ingested into ScreeningScore. Parcel polygons, ownership
+attributes, title, and mineral estate are **out of scope**. The product shows intersecting
+county name(s) already resolved for Point/AOI evidence, plus static outbound citations so
+users know where to research land elsewhere.
+
+| Pointer | URL | Role |
+|---------|-----|------|
+| Texas Comptroller CAD / county directory | https://comptroller.texas.gov/taxes/property-tax/county-directory/ | Find county appraisal district (CAD) for surface ownership / appraisal research |
+| Railroad Commission of Texas — data & research | https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/ | Public oil & gas datasets as mineral-context research pointer — **not** mineral ownership |
+| Texas General Land Office | https://www.glo.texas.gov/ | Optional state land office research pointer |
+
+**Do not claim:** statewide parcel coverage, owner names, parcel IDs, or land scores from these links.
+External records are not verified by this product. No CAD scrape/API and no ArcGIS parcel layer.
