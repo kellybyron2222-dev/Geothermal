@@ -128,15 +128,19 @@ def aggregate_thermal(counties: gpd.GeoDataFrame, points: gpd.GeoDataFrame) -> p
     )
     agg = hf.merge(gr, on="county_fips", how="outer")
 
-    # Prefer gradient for scoring raw thermal; else heat-flow fallback.
-    use_grad = agg["gradient_n"].fillna(0) > 0
+    # Prefer gradient only when control density clears min-n gate; else heat-flow fallback.
+    # n=1 gradient flips were ranking-contaminating (judgment N2 / red F5).
+    MIN_GRADIENT_N = 3
+    use_grad = agg["gradient_n"].fillna(0) >= MIN_GRADIENT_N
+    thin_grad = (agg["gradient_n"].fillna(0) > 0) & ~use_grad
     agg["thermal_mean"] = np.where(use_grad, agg["gradient_mean"], agg["heatflow_mean"])
     agg["thermal_n"] = np.where(use_grad, agg["gradient_n"], agg["heatflow_n"]).astype(float)
     agg["thermal_metric"] = np.where(use_grad, "gradient_C_per_km", "heat_flow_mWm2")
     agg["thermal_median"] = agg["thermal_mean"]  # placeholder for schema compat
 
     print(
-        f"Counties with gradient: {int(use_grad.sum())}; "
+        f"Counties with gradient (n>={MIN_GRADIENT_N}): {int(use_grad.sum())}; "
+        f"thin gradient held to heat-flow fallback: {int(thin_grad.sum())}; "
         f"heat-flow fallback only: {int((~use_grad & agg['heatflow_n'].fillna(0).gt(0)).sum())}"
     )
     return agg

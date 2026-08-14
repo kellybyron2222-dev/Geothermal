@@ -34,7 +34,11 @@ export function SiteDossierPanel({ dossier, onClear }: Props) {
         {dossier.lat.toFixed(4)}°N, {Math.abs(dossier.lon).toFixed(4)}°W
       </p>
 
-      <div className={`verb-banner verb-${dossier.evidenceVerb.replace(/\s+/g, '-').toLowerCase()}`}>
+      <div
+        className={`verb-banner verb-${dossier.evidenceVerb
+          .replace(/\s+/g, '-')
+          .toLowerCase()}`}
+      >
         {dossier.evidenceVerb}
       </div>
 
@@ -64,27 +68,59 @@ export function SiteDossierPanel({ dossier, onClear }: Props) {
         </p>
       )}
 
-      <h3>Local thermal means {weak && <span className="muted">(de-emphasized — weak control)</span>}</h3>
-      <div className={`score-row ${weak ? 'weakened' : ''}`}>
-        <div>
-          <div className="label">Gradient mean (n={dossier.gradientPointCount})</div>
-          <div className="big">
-            {dossier.localGradientMean == null
-              ? '—'
-              : `${dossier.localGradientMean.toFixed(1)}`}
+      {weak ? (
+        <details className="weak-means">
+          <summary>Show local means (weak control)</summary>
+          <p className="muted tiny">
+            Control quality above is the lead signal — means are secondary when n≤1 or
+            confidence is None/Low.
+          </p>
+          <div className="score-row weakened">
+            <div>
+              <div className="label">Gradient mean (n={dossier.gradientPointCount})</div>
+              <div className="big">
+                {dossier.localGradientMean == null
+                  ? '—'
+                  : `${dossier.localGradientMean.toFixed(1)}`}
+              </div>
+              <div className="muted tiny">°C/km · unweighted ≤40 km disk</div>
+            </div>
+            <div>
+              <div className="label">Heat-flow mean (n={dossier.heatflowPointCount})</div>
+              <div className="big">
+                {dossier.localHeatflowMean == null
+                  ? '—'
+                  : `${dossier.localHeatflowMean.toFixed(1)}`}
+              </div>
+              <div className="muted tiny">mW/m² · unweighted ≤40 km disk</div>
+            </div>
           </div>
-          <div className="muted tiny">°C/km · unweighted ≤40 km disk</div>
-        </div>
-        <div>
-          <div className="label">Heat-flow mean (n={dossier.heatflowPointCount})</div>
-          <div className="big">
-            {dossier.localHeatflowMean == null
-              ? '—'
-              : `${dossier.localHeatflowMean.toFixed(1)}`}
+        </details>
+      ) : (
+        <>
+          <h3>Local thermal means</h3>
+          <div className="score-row">
+            <div>
+              <div className="label">Gradient mean (n={dossier.gradientPointCount})</div>
+              <div className="big">
+                {dossier.localGradientMean == null
+                  ? '—'
+                  : `${dossier.localGradientMean.toFixed(1)}`}
+              </div>
+              <div className="muted tiny">°C/km · unweighted ≤40 km disk</div>
+            </div>
+            <div>
+              <div className="label">Heat-flow mean (n={dossier.heatflowPointCount})</div>
+              <div className="big">
+                {dossier.localHeatflowMean == null
+                  ? '—'
+                  : `${dossier.localHeatflowMean.toFixed(1)}`}
+              </div>
+              <div className="muted tiny">mW/m² · unweighted ≤40 km disk</div>
+            </div>
           </div>
-          <div className="muted tiny">mW/m² · unweighted ≤40 km disk</div>
-        </div>
-      </div>
+        </>
+      )}
 
       {dossier.nearestPoints.length > 0 && (
         <>

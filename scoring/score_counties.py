@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 WEB_DATA = ROOT / "web" / "public" / "data"
 
-METHODOLOGY_VERSION = "0.3.0"
+METHODOLOGY_VERSION = "0.3.1"
 W_THERMAL = 0.60
 W_INFRA = 0.40
 
@@ -226,8 +226,14 @@ def build() -> None:
         },
         "disclaimer": (
             "Regional screening index for next-gen geothermal focus in Texas. "
+            "Gradient and heat-flow counties are separate cohorts — scores are not "
+            "scientifically comparable across thermal metrics. "
             "Not a resource map, not interconnection feasibility, not a drill recommendation."
         ),
+        "thermalCohorts": {
+            "note": "S_thermal scaled within metric cohorts; do not treat one statewide ladder as cross-metric.",
+            "minGradientN": 3,
+        },
     }
 
     # GeoJSON with score properties
@@ -237,6 +243,10 @@ def build() -> None:
     props = []
     for _, g in geo.iterrows():
         r = score_lookup[str(g["county_fips"])]
+        thermal = next((f for f in r["factors"] if f["id"] == "thermal"), None)
+        metric = (thermal or {}).get("metric") or "none"
+        if thermal is None or thermal.get("rawValue") is None:
+            metric = "none"
         props.append(
             {
                 "countyFips": r["countyFips"],
@@ -244,6 +254,8 @@ def build() -> None:
                 "rank": r["rank"],
                 "screeningScore": r["screeningScore"],
                 "confidence": r["confidence"],
+                "thermalMetric": metric,
+                "thermalControlCount": r.get("thermalControlCount", 0),
             }
         )
     geo_out = gpd.GeoDataFrame(props, geometry=geo.geometry.values, crs="EPSG:4326")

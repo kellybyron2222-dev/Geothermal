@@ -37,7 +37,11 @@ export interface SiteDossier {
     grad: number | null
   }>
   limitations: string[]
-  evidenceVerb: 'Keep looking' | 'Weak evidence' | 'Deprioritize' | 'Insufficient control'
+  evidenceVerb:
+    | 'Insufficient control'
+    | 'Sparse control'
+    | 'Moderate control'
+    | 'Adequate control to keep investigating'
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -76,14 +80,11 @@ function siteConfidence(n: number, nearestKm: number | null): SiteConfidence {
   return 'Low'
 }
 
-function evidenceVerb(
-  conf: SiteConfidence,
-  nearestKm: number | null,
-): SiteDossier['evidenceVerb'] {
+function evidenceVerb(conf: SiteConfidence): SiteDossier['evidenceVerb'] {
   if (conf === 'None') return 'Insufficient control'
-  if (conf === 'Low' || (nearestKm != null && nearestKm > 30)) return 'Weak evidence'
-  if (conf === 'High') return 'Keep looking'
-  return 'Keep looking'
+  if (conf === 'Low') return 'Sparse control'
+  if (conf === 'Medium') return 'Moderate control'
+  return 'Adequate control to keep investigating'
 }
 
 export function buildSiteDossier(args: {
@@ -167,6 +168,6 @@ export function buildSiteDossier(args: {
       grad: p.grad,
     })),
     limitations,
-    evidenceVerb: evidenceVerb(conf, nearestKm),
+    evidenceVerb: evidenceVerb(conf),
   }
 }

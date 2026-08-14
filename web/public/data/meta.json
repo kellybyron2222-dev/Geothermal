@@ -1,11 +1,11 @@
 {
-  "methodologyVersion": "0.3.0",
+  "methodologyVersion": "0.3.1",
   "weights": {
     "thermal": 0.6,
     "infra": 0.4
   },
   "confidenceThresholds": {
-    "tLow": 8.5,
+    "tLow": 9.0,
     "tHigh": 21.0
   },
   "nCounties": 254,
@@ -23,5 +23,9 @@
       "vintage": "2023"
     }
   },
-  "disclaimer": "Regional screening index for next-gen geothermal focus in Texas. Not a resource map, not interconnection feasibility, not a drill recommendation."
+  "disclaimer": "Regional screening index for next-gen geothermal focus in Texas. Gradient and heat-flow counties are separate cohorts \u2014 scores are not scientifically comparable across thermal metrics. Not a resource map, not interconnection feasibility, not a drill recommendation.",
+  "thermalCohorts": {
+    "note": "S_thermal scaled within metric cohorts; do not treat one statewide ladder as cross-metric.",
+    "minGradientN": 3
+  }
 }

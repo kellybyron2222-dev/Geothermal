@@ -1,9 +1,9 @@
-# Scoring Methodology (Phase 1 / v0.3)
+# Scoring Methodology (Phase 1 / v0.3.1)
 
 **Thermal factor:** geothermal **temperature gradient** (preferred), heat flow fallback.  
 **Locks:** [DECISIONS.md](DECISIONS.md) D4 · [scoring-critique.md](scoring-critique.md)
 
-`methodology_version: 0.3.0`
+`methodology_version: 0.3.1`
 
 ---
 
@@ -36,8 +36,10 @@ A **relative Texas county screening index** for early next-gen geothermal priori
 | Why gradient | Matches next-gen intuition: temperature rise with depth |
 | Calculation | County mean of valid gradient points → winsorize P10–P90 → scale 0–100 in Texas |
 | Valid range gate | Drop absurd point values outside ~5–150 °C/km before aggregate |
-| **Fallback** | If a county has **no** gradient control, use county mean **heat flow** (`q`, mW/m²) with the same winsorize/scale path |
+| **Min-n gate** | Prefer gradient only when `gradient_n >= 3`; thinner gradient control uses heat-flow fallback |
+| **Fallback** | If gradient gate fails or no gradient control, use county mean **heat flow** (`q`, mW/m²) with the same winsorize/scale path |
 | UI label | “Geothermal gradient” or “Heat-flow fallback” depending on `thermal_metric` |
+| **Cross-metric** | `S_thermal` is scaled **within** each cohort. Do **not** treat one statewide ladder as scientifically comparable across metrics. Explorer defaults to the **gradient cohort** list. |
 | **Do not** | DIY BHT→gradient corrections |
 
 ### B — Transmission proximity (weight **0.40**)

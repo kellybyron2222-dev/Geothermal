@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ScreeningCounty } from './types/screening'
+import { AoiEvidencePanel } from './components/AoiEvidencePanel'
 import { DetailPanel } from './components/DetailPanel'
-import { MapView } from './components/MapView'
+import { MapView, type EvidenceMode } from './components/MapView'
 import { Methodology } from './components/Methodology'
+import {
+  RankedCountyList,
+  type CohortFilter,
+} from './components/RankedCountyList'
 import { SiteDossierPanel } from './components/SiteDossierPanel'
+import {
+  buildAoiDossier,
+  countiesIntersectingAoi,
+  parseAoiGeoJson,
+  type AoiCountyContext,
+  type AoiDossier,
+  type CountyFeatureLike,
+  type LonLat,
+} from './lib/aoiEval'
 import {
   buildSiteDossier,
   type InfraCell,
@@ -22,6 +36,17 @@ interface ProspectsPayload {
 
 type View = 'explorer' | 'methodology'
 
+const FOCUS_CAP = 3
+const IGNORE_CAP = 3
+
+function closeRing(vertices: LonLat[]): LonLat[] {
+  if (vertices.length < 3) return vertices
+  const first = vertices[0]!
+  const last = vertices[vertices.length - 1]!
+  if (first[0] === last[0] && first[1] === last[1]) return vertices
+  return [...vertices, [first[0], first[1]]]
+}
+
 export default function App() {
   const [view, setView] = useState<View>('explorer')
   const [payload, setPayload] = useState<ProspectsPayload | null>(null)
@@ -29,10 +54,19 @@ export default function App() {
   const [siteError, setSiteError] = useState<string | null>(null)
   const [selectedFips, setSelectedFips] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [siteMode, setSiteMode] = useState(false)
+  const [evidenceMode, setEvidenceMode] = useState<EvidenceMode>('county')
   const [dossier, setDossier] = useState<SiteDossier | null>(null)
+  const [aoiDraft, setAoiDraft] = useState<LonLat[]>([])
+  const [aoiRing, setAoiRing] = useState<LonLat[] | null>(null)
+  const [aoiDossier, setAoiDossier] = useState<AoiDossier | null>(null)
+  const [draftCountyHints, setDraftCountyHints] = useState<AoiCountyContext[]>([])
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [countyFeatures, setCountyFeatures] = useState<CountyFeatureLike[] | null>(null)
   const [thermalPoints, setThermalPoints] = useState<ThermalPoint[]>([])
   const [infraCells, setInfraCells] = useState<InfraCell[]>([])
+  const [cohort, setCohort] = useState<CohortFilter>('gradient')
+  const [focusFips, setFocusFips] = useState<Set<string>>(() => new Set())
+  const [ignoreFips, setIgnoreFips] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL
@@ -43,7 +77,12 @@ export default function App() {
       })
       .then((prospects: ProspectsPayload) => {
         setPayload(prospects)
-        if (prospects.counties[0]) setSelectedFips(prospects.counties[0].countyFips)
+        const firstGradient = prospects.counties.find((c) => {
+          const t = c.factors.find((f) => f.id === 'thermal')
+          return t?.metric === 'gradient_C_per_km' && t.rawValue != null
+        })
+        const pick = firstGradient ?? prospects.counties[0]
+        if (pick) setSelectedFips(pick.countyFips)
       })
       .catch((e: Error) => setError(e.message))
 
@@ -64,25 +103,165 @@ export default function App() {
       .catch((e: Error) => setSiteError(`Point check data unavailable: ${e.message}`))
   }, [])
 
+  const countiesByFips = useMemo(() => {
+    const m = new Map<
+      string,
+      { name: string; rank: number; screeningScore: number; thermalMetric: string | null }
+    >()
+    if (!payload) return m
+    for (const c of payload.counties) {
+      const metric = c.factors.find((f) => f.id === 'thermal')?.metric ?? null
+      m.set(c.countyFips, {
+        name: c.name,
+        rank: c.rank,
+        screeningScore: c.screeningScore,
+        thermalMetric: metric ?? null,
+      })
+    }
+    return m
+  }, [payload])
+
+  const ensureCountyFeatures = async (): Promise<CountyFeatureLike[]> => {
+    if (countyFeatures) return countyFeatures
+    const base = import.meta.env.BASE_URL
+    const r = await fetch(`${base}data/prospects.geojson`)
+    if (!r.ok) throw new Error(`prospects.geojson (${r.status})`)
+    const gj = (await r.json()) as { features?: CountyFeatureLike[] }
+    const feats = gj.features ?? []
+    setCountyFeatures(feats)
+    return feats
+  }
+
   const suggestions = useMemo(() => {
-    if (!payload || siteMode) return []
+    if (!payload || evidenceMode !== 'county') return []
     const q = query.trim().toLowerCase()
     if (q.length < 1) return []
     return payload.counties
       .filter((c) => c.name.toLowerCase().includes(q))
       .slice(0, 8)
-  }, [payload, query, siteMode])
+  }, [payload, query, evidenceMode])
 
   const selected = useMemo(
     () => payload?.counties.find((c) => c.countyFips === selectedFips) ?? null,
     [payload, selectedFips],
   )
 
-  const pickCounty = (county: ScreeningCounty) => {
-    setSiteMode(false)
+  const clearAoiState = () => {
+    setAoiDraft([])
+    setAoiRing(null)
+    setAoiDossier(null)
+    setDraftCountyHints([])
+    setUploadError(null)
+  }
+
+  const clearPointState = () => {
     setDossier(null)
+  }
+
+  const enterMode = (mode: EvidenceMode) => {
+    if (mode === evidenceMode) {
+      setEvidenceMode('county')
+      clearPointState()
+      clearAoiState()
+      return
+    }
+    setEvidenceMode(mode)
+    if (mode === 'point') {
+      clearAoiState()
+    } else if (mode === 'aoi') {
+      clearPointState()
+    } else {
+      clearPointState()
+      clearAoiState()
+    }
+  }
+
+  const pickCounty = (county: ScreeningCounty) => {
+    setEvidenceMode('county')
+    clearPointState()
+    clearAoiState()
     setSelectedFips(county.countyFips)
     setQuery(county.name)
+  }
+
+  const finishAoi = (ring: LonLat[], counties: AoiCountyContext[]) => {
+    const closed = closeRing(ring)
+    setAoiRing(closed)
+    setAoiDraft([])
+    setAoiDossier(
+      buildAoiDossier({
+        ring: closed,
+        thermalPoints,
+        infraCells,
+        intersectingCounties: counties,
+      }),
+    )
+  }
+
+  const onClosePolygon = () => {
+    if (aoiDraft.length < 3) return
+    const unique = new Map<string, AoiCountyContext>()
+    for (const h of draftCountyHints) {
+      if (!unique.has(h.countyFips)) unique.set(h.countyFips, h)
+    }
+    finishAoi(aoiDraft, [...unique.values()].slice(0, 8))
+  }
+
+  const onUploadText = async (text: string) => {
+    const parsed = parseAoiGeoJson(text)
+    if (parsed.error || parsed.ring.length < 4) {
+      setUploadError(parsed.error ?? 'Polygon ring too short.')
+      return
+    }
+    setUploadError(null)
+    try {
+      const feats = await ensureCountyFeatures()
+      const counties = countiesIntersectingAoi(parsed.ring, feats, countiesByFips)
+      finishAoi(parsed.ring, counties)
+      setDraftCountyHints([])
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to resolve county context'
+      setUploadError(msg)
+      finishAoi(parsed.ring, [])
+    }
+  }
+
+  const toggleFocus = (fips: string) => {
+    setFocusFips((prev) => {
+      const next = new Set(prev)
+      if (next.has(fips)) {
+        next.delete(fips)
+        return next
+      }
+      if (next.size >= FOCUS_CAP) return prev
+      next.add(fips)
+      return next
+    })
+    setIgnoreFips((prev) => {
+      if (!prev.has(fips)) return prev
+      const next = new Set(prev)
+      next.delete(fips)
+      return next
+    })
+  }
+
+  const toggleIgnore = (fips: string) => {
+    setIgnoreFips((prev) => {
+      const next = new Set(prev)
+      if (next.has(fips)) {
+        next.delete(fips)
+        return next
+      }
+      if (next.size >= IGNORE_CAP) return prev
+      next.add(fips)
+      return next
+    })
+    setFocusFips((prev) => {
+      if (!prev.has(fips)) return prev
+      const next = new Set(prev)
+      next.delete(fips)
+      return next
+    })
   }
 
   if (view === 'methodology') {
@@ -102,6 +281,8 @@ export default function App() {
     )
   }
 
+  const evidenceActive = evidenceMode !== 'county'
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -115,17 +296,23 @@ export default function App() {
         <div className="header-actions">
           <button
             type="button"
-            className={siteMode ? 'linkish active-toggle' : 'linkish'}
+            className={evidenceMode === 'point' ? 'linkish active-toggle' : 'linkish'}
             disabled={Boolean(siteError)}
             title={siteError ?? 'Point evidence check'}
-            onClick={() => {
-              setSiteMode((v) => !v)
-              if (siteMode) setDossier(null)
-            }}
+            onClick={() => enterMode('point')}
           >
-            {siteMode ? 'Point check: ON' : 'Point check'}
+            {evidenceMode === 'point' ? 'Point check: ON' : 'Point check'}
           </button>
-          {!siteMode && (
+          <button
+            type="button"
+            className={evidenceMode === 'aoi' ? 'linkish active-toggle' : 'linkish'}
+            disabled={Boolean(siteError)}
+            title={siteError ?? 'AOI evidence check'}
+            onClick={() => enterMode('aoi')}
+          >
+            {evidenceMode === 'aoi' ? 'AOI check: ON' : 'AOI check'}
+          </button>
+          {evidenceMode === 'county' && (
             <div className="search">
               <input
                 value={query}
@@ -162,15 +349,44 @@ export default function App() {
       {!payload && !error && <div className="banner">Loading…</div>}
 
       {payload && (
-        <main className="explorer">
+        <main className={evidenceActive ? 'explorer site-mode' : 'explorer'}>
+          {evidenceMode === 'county' && (
+            <aside className="list-pane">
+              <RankedCountyList
+                counties={payload.counties}
+                selectedFips={selectedFips}
+                onSelect={(fips) => {
+                  setSelectedFips(fips)
+                  clearPointState()
+                  clearAoiState()
+                }}
+                cohort={cohort}
+                onCohortChange={setCohort}
+                focusFips={focusFips}
+                ignoreFips={ignoreFips}
+                onToggleFocus={toggleFocus}
+                onToggleIgnore={toggleIgnore}
+                query={query}
+              />
+            </aside>
+          )}
           <section className="map-pane">
             <MapView
               selectedFips={selectedFips}
-              siteMode={siteMode}
-              siteMarker={dossier ? { lat: dossier.lat, lon: dossier.lon } : null}
+              evidenceMode={evidenceMode}
+              siteMarker={
+                evidenceMode === 'point' && dossier
+                  ? { lat: dossier.lat, lon: dossier.lon }
+                  : null
+              }
+              aoiRing={evidenceMode === 'aoi' ? aoiRing : null}
+              draftVertices={
+                evidenceMode === 'aoi' && !aoiRing && aoiDraft.length > 0 ? aoiDraft : null
+              }
               onSelectCounty={(fips) => {
                 setSelectedFips(fips)
-                setDossier(null)
+                clearPointState()
+                clearAoiState()
               }}
               onSiteClick={(evt) => {
                 const county = payload.counties.find((c) => c.countyFips === evt.countyFips)
@@ -190,11 +406,44 @@ export default function App() {
                 )
                 if (evt.countyFips) setSelectedFips(evt.countyFips)
               }}
+              onAoiMapClick={(evt) => {
+                if (aoiRing) return
+                const vert: LonLat = [evt.lon, evt.lat]
+                setAoiDraft((prev) => [...prev, vert])
+                if (evt.countyFips) {
+                  const metric =
+                    payload.counties
+                      .find((c) => c.countyFips === evt.countyFips)
+                      ?.factors.find((f) => f.id === 'thermal')?.metric ?? null
+                  setDraftCountyHints((prev) => {
+                    if (prev.some((h) => h.countyFips === evt.countyFips)) return prev
+                    return [
+                      ...prev,
+                      {
+                        countyFips: evt.countyFips!,
+                        countyName: evt.countyName ?? evt.countyFips!,
+                        countyRank: evt.countyRank,
+                        countyScore: evt.countyScore,
+                        countyThermalMetric: metric,
+                      },
+                    ]
+                  })
+                }
+              }}
             />
           </section>
           <aside className="detail-pane">
-            {siteMode ? (
+            {evidenceMode === 'point' ? (
               <SiteDossierPanel dossier={dossier} onClear={() => setDossier(null)} />
+            ) : evidenceMode === 'aoi' ? (
+              <AoiEvidencePanel
+                dossier={aoiDossier}
+                draftCount={aoiDraft.length}
+                onClosePolygon={onClosePolygon}
+                onClear={clearAoiState}
+                onUploadText={(text) => void onUploadText(text)}
+                uploadError={uploadError}
+              />
             ) : (
               <DetailPanel county={selected} />
             )}

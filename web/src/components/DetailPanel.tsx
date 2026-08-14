@@ -9,8 +9,8 @@ export function DetailPanel({ county }: Props) {
     return (
       <div className="detail-panel empty">
         <p>
-          Select a county on the map, or use <strong>Point check</strong> for click-level
-          evidence.
+          Select a county from the ranked list or the map, or use{' '}
+          <strong>Point check</strong> for click-level evidence.
         </p>
       </div>
     )

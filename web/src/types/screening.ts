@@ -25,4 +25,6 @@ export interface ScreeningCounty {
   factors: ScreeningFactor[]
   drivers: string[]
   limitations: string[]
+  /** Control-point count for the active thermal metric (from prospects JSON). */
+  thermalControlCount?: number
 }
